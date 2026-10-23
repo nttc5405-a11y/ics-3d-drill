@@ -562,8 +562,8 @@ function tanker(over){const g=new THREE.Group();
   if(!over)return g;const w=new THREE.Group();g.rotation.x=Math.PI/2;g.position.set(0,1.25,-1.9);w.add(g);return w}
 
 /* ---------- 物件目錄（指揮板磁鐵） ---------- */
-const CATS=[['all','全部'],['veh','車輛'],['ppl','人員'],['res','應變'],['env','環境'],['ext','其他']];
-const CAT_COLOR={veh:'var(--c-veh)',ppl:'var(--c-ppl)',res:'var(--c-res)',env:'var(--c-env)',ext:'var(--c-ext)'};
+const CATS=[['all','全部'],['veh','車輛'],['ppl','人員'],['res','應變'],['act','戰術'],['env','環境'],['ext','其他']];
+const CAT_COLOR={veh:'var(--c-veh)',ppl:'var(--c-ppl)',res:'var(--c-res)',act:'#2a7de1',env:'var(--c-env)',ext:'var(--c-ext)'};
 const CATALOG={
   engine:{cat:'veh',name:'水箱車',build(){const g=truck({len:8});g.add(box(5.4,.15,2,0x9aa0a6,-1.15,3.45,0));return g}},
   tender:{cat:'veh',name:'水庫車',build(){const g=truck({len:9.4,body:false});const t=cyl(1.15,1.15,6.6,C.red,-1.3,1.75,0,24);t.rotation.z=Math.PI/2;g.add(t);g.add(box(9,.18,2.55,C.ref,0,1.05,0));return g}},
@@ -613,6 +613,61 @@ const CATALOG={
   tow:{cat:'ext',name:'拖吊車',build(){const g=truck({len:7,w:2.4,h:1.2,color:0xe0a800,stripe:null});const b=box(4,.25,.25,0x444444,-1.4,2.6,0);b.rotation.z=.35;g.add(b);return g}}
 };
 
+/* ---------- 戰術動作與環境現象（新增物件） ---------- */
+function smokeCol(color,op,rise=16,spread=5){return ()=>{const g=new THREE.Group();const n=10;
+  for(let i=0;i<n;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(1,12,10),new THREE.MeshLambertMaterial({color,transparent:true,opacity:op,depthWrite:false}));m.userData.o=i/n;g.add(m)}
+  g.userData.anim=t=>g.children.forEach(m=>{const p=(t*.18+m.userData.o)%1;m.position.set(p*spread,2+p*rise,Math.sin(m.userData.o*9)*.8);m.scale.setScalar(1+p*4);m.material.opacity=op*(1-p)});return g}}
+function waterJet(fog){const g=new THREE.Group();
+  const nz=cyl(.06,.1,1.1,0xc9a227,0,1.3,0);nz.rotation.z=Math.PI/2;g.add(nz);
+  const N=fog?60:28,L=fog?9:17,mt=new THREE.MeshBasicMaterial({color:0xa9d8ff,transparent:true,opacity:fog?.55:.85,depthWrite:false});
+  for(let i=0;i<N;i++){const d=new THREE.Mesh(new THREE.SphereGeometry(fog?.2:.1,6,5),mt);d.userData.o=i/N;d.userData.k=(i*.618)%1;d.userData.j=((i*.37)%1)-.5;g.add(d)}
+  g.userData.anim=t=>g.children.forEach(d=>{if(d.userData.o===undefined)return;const p=(t*(fog?.7:1)+d.userData.o)%1;
+    d.position.set(.6+p*L,fog?1.4+1.3*p-2.6*p*p+d.userData.k*.7*p:1.4+3*p-3.6*p*p,fog?d.userData.j*p*L*.75:0)});
+  return g}
+Object.assign(CATALOG,{
+  jet:{cat:'act',name:'射水（直線水柱）',build:()=>waterJet(false),noShadow:true,h:3},
+  fog:{cat:'act',name:'射水（霧狀水柱）',build:()=>waterJet(true),noShadow:true,h:3},
+  search:{cat:'act',name:'搜索範圍',build(){const g=new THREE.Group();g.add(flat(new THREE.CircleGeometry(4.5,40),0x2fb4ff,.04,.16));g.add(flat(new THREE.RingGeometry(4.3,4.55,48),0x2fb4ff,.05,.9));
+    const sw=flat(new THREE.CircleGeometry(4.4,24,0,Math.PI/4),0x9be1ff,.06,.55);g.add(sw);g.userData.anim=t=>{sw.rotation.z=t*1.6};return g},noShadow:true,flatPick:true,h:1},
+  vent:{cat:'act',name:'正壓通風',build(){const g=new THREE.Group();const dk=mat(0x333b42);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(.7,.09,8,24),dk);ring.rotation.y=Math.PI/2;ring.position.y=.9;ring.castShadow=true;g.add(ring);g.add(box(.5,.5,.9,dk,0,.25,0));
+    const bl=new THREE.Group();bl.position.y=.9;for(let k=0;k<3;k++){const w=new THREE.Group();w.rotation.x=k*2.094;w.add(box(.05,.62,.14,0x9aa0a6,0,.31,0));bl.add(w)}g.add(bl);
+    const pm=new THREE.MeshBasicMaterial({color:0xdff3ff,transparent:true,opacity:.5,depthWrite:false}),N=20;
+    for(let i=0;i<N;i++){const a=new THREE.Mesh(new THREE.SphereGeometry(.14,6,5),pm);a.userData.o=i/N;a.userData.k=((i*.618)%1)-.5;a.userData.j=((i*.37)%1)-.5;g.add(a)}
+    g.userData.anim=t=>{bl.rotation.x=t*18;g.children.forEach(a=>{if(a.userData.o===undefined)return;const p=(t*.8+a.userData.o)%1;a.position.set(.9+p*7,.9+a.userData.k*p*2.2,a.userData.j*p*2.2)})};return g},noShadow:false,h:2.5},
+  breach:{cat:'act',name:'破壞作業',build(){const g=new THREE.Group();for(const s of[-1,1]){const b=box(.16,.16,2,0xc8102e,0,1.2,0);b.rotation.x=s*.8;g.add(b)}
+    const em=new THREE.MeshBasicMaterial({color:0xffb020}),N=14,sp=[];for(let i=0;i<N;i++){const m=new THREE.Mesh(new THREE.BoxGeometry(.08,.08,.08),em);m.userData.i=i;g.add(m);sp.push(m)}
+    g.userData.anim=t=>sp.forEach(m=>{const i=m.userData.i,p=(t*1.3+i/N)%1,a=i*2.4;m.position.set(Math.cos(a)*p*1.6,1.2+(1.4+(i%3)*.5)*p-3.2*p*p,Math.sin(a)*p*1.6);m.visible=p<.9});return g},noShadow:true,h:2.5},
+  smokeBlack:{cat:'env',name:'黑色濃煙',build:smokeCol(0x14161a,.72),noShadow:true,h:4},
+  smokeBrown:{cat:'env',name:'褐色濃煙',build:smokeCol(0x7a4f2c,.62),noShadow:true,h:4},
+  smokeWhite:{cat:'env',name:'白煙／水蒸氣',build:smokeCol(0xf0f4f6,.6,14,4),noShadow:true,h:4},
+  vapor:{cat:'env',name:'綠色蒸氣雲（化學外洩）',build(){const g=new THREE.Group();const n=16;
+    for(let i=0;i<n;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(1,12,10),new THREE.MeshLambertMaterial({color:0x86e04f,transparent:true,opacity:.36,depthWrite:false}));m.userData.a=i*2.4;m.userData.r=1+((i*.618)%1)*5;m.userData.s=1.6+((i*.37)%1)*1.6;g.add(m)}
+    g.userData.anim=t=>g.children.forEach(m=>{const a=m.userData.a+t*.12;m.position.set(Math.cos(a)*m.userData.r,.8+.25*Math.sin(t+m.userData.a),Math.sin(a)*m.userData.r);const s=m.userData.s*(1+.12*Math.sin(t*.8+m.userData.a));m.scale.set(s,s*.5,s)});return g},noShadow:true,flatPick:true,h:2},
+  flash:{cat:'env',name:'閃燃（Flashover）',build(){const g=CATALOG.fire.build(),a0=g.userData.anim;
+    const fc=[0xff6a00,0xffa200,0xff3c00,0xffd24a];
+    for(let i=0;i<30;i++){const h=2.6+((i*.618)%1)*3.4,geo=new THREE.ConeGeometry(.55+((i*.37)%1)*.6,h,10);geo.translate(0,h/2,0);
+      const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:fc[i%4],transparent:true,opacity:.85,depthWrite:false}));const a=i*2.4,r=.4+((i*.53)%1)*3;
+      m.position.set(Math.cos(a)*r,0,Math.sin(a)*r);m.userData.ph=Math.random()*6;g.add(m)}
+    for(let i=0;i<7;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(1.1,12,10),new THREE.MeshBasicMaterial({color:i%2?0xff8a1c:0xffb030,transparent:true,opacity:.5,depthWrite:false}));m.scale.set(1.5,.6,1.5);m.position.set(Math.cos(i*.9)*2,4.6+(i%3)*.5,Math.sin(i*.9)*2);m.userData.roll=i;g.add(m)}
+    const core=new THREE.Mesh(new THREE.SphereGeometry(1.9,18,14),new THREE.MeshBasicMaterial({color:0xffc060,transparent:true,opacity:.55,depthWrite:false}));core.position.y=1.9;g.add(core);
+    const L=new THREE.PointLight(0xffb060,5,34);L.position.y=2.4;g.add(L);
+    g.userData.anim=t=>{a0(t);g.children.forEach(m=>{if(m.userData.roll!==undefined){const i=m.userData.roll,a=i*.9+t*1.4;m.position.x=Math.cos(a)*2.2;m.position.z=Math.sin(a)*2.2;m.scale.set(1.5+.3*Math.sin(t*6+i),.6+.2*Math.sin(t*7+i),1.5)}});const k=Math.abs(Math.sin(t*5));core.scale.setScalar(1+.35*k+.1*Math.sin(t*17));core.material.opacity=.35+.4*k;L.intensity=3+5*k};return g},noShadow:true,h:4.5},
+  explosion:{cat:'env',name:'爆炸',build(){const g=new THREE.Group();
+    const fb=new THREE.Mesh(new THREE.SphereGeometry(1,20,16),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false}));fb.position.y=1.5;g.add(fb);
+    const ring=flat(new THREE.RingGeometry(.9,1,40),0xffe6b0,.05,0);g.add(ring);
+    const L=new THREE.PointLight(0xffa040,0,50);L.position.y=2.5;g.add(L);
+    const deb=[],dm=new THREE.MeshBasicMaterial({color:0x2a2622});for(let i=0;i<16;i++){const m=new THREE.Mesh(new THREE.BoxGeometry(.22,.22,.22),dm);m.userData.i=i;g.add(m);deb.push(m)}
+    const sm=[],sc=new THREE.MeshLambertMaterial({color:0x2c2c30,transparent:true,opacity:0,depthWrite:false});for(let i=0;i<8;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(1,10,8),sc.clone());m.userData.i=i;g.add(m);sm.push(m)}
+    g.userData.anim=t=>{const ph=(t%6)/6,e=Math.min(ph/.18,1),en=ph<.18?e:1,fade=Math.min(Math.max((ph-.18)/.3,0),1);
+      fb.scale.setScalar(.4+en*3.6);fb.material.color.setRGB(1,1-.55*en,.9-.8*en);fb.material.opacity=ph<.6?(1-fade)*.9:0;
+      ring.scale.setScalar(1+en*9);ring.material.opacity=ph<.4?(1-en)*.75:0;L.intensity=ph<.4?(1-en)*14+(ph<.05?10:0):0;
+      deb.forEach(m=>{const i=m.userData.i,a=i*.4,r=en*(4+(i%4)*1.6),p=Math.min(ph/.5,1);m.position.set(Math.cos(a)*r,1.5+(5+(i%3)*2)*p-9*p*p,Math.sin(a)*r);m.visible=ph<.55});
+      sm.forEach(m=>{const i=m.userData.i,q=Math.min(Math.max((ph-.08)/.9,0),1);m.position.set(Math.cos(i)*q*3,2+q*(8+i),Math.sin(i)*q*3);m.scale.setScalar(1.2+q*4);m.material.opacity=ph>.08?.6*(1-q):0})};
+    return g},noShadow:true,h:5}
+});
+CATALOG.smoke.name='灰色濃煙';
+
 /* ---------- 情境 ---------- */
 function road(w,z=0){
   const r=flat(new THREE.PlaneGeometry(800,w),0x3a3e44,.015,1);r.position.z=z;envGroup.add(r);
@@ -625,7 +680,8 @@ function tree(x,z){const g=new THREE.Group();g.add(cyl(.18,.25,2,0x5b4630,0,1,0)
 
 /* 成功鎮中華路周邊（OpenStreetMap 開放資料，單位：公尺，x 向東、z 向南，原點約在中華路） */
 const MAP_CG={"roads":[{"p":[[-24.4,-280.2],[-0.4,-221.4],[10.4,-194.8],[27.5,-152.9],[43.5,-113.7],[60.1,-72.8],[77.2,-30.9]],"w":7,"n":"民族路"},{"p":[[308.1,-28.1],[305.5,-27.0],[223.4,5.5],[209.2,11.1],[134.9,40.5],[110.3,50.3]],"w":7,"n":"中山東路"},{"p":[[-120.9,-241.9],[-118.7,-221.7],[-159.5,-126.8],[-144.2,-51.5],[-124.5,-16.4],[-77.2,30.9]],"w":7,"n":""},{"p":[[545.4,-311.9],[440.8,-270.6],[341.4,-231.4],[244.7,-193.1],[143.8,-153.3],[43.5,-113.7],[-55.7,-74.5],[-106.7,-54.4]],"w":7,"n":"民生路"},{"p":[[559.7,-275.5],[455.6,-233.3],[356.9,-193.2],[259.9,-153.8],[159.7,-113.3],[60.1,-72.8],[-38.5,-32.8]],"w":4,"n":"大仁街"},{"p":[[593.5,-189.5],[489.9,-147.1],[391.1,-106.6],[293.4,-66.5],[194.4,-26.0],[95.7,14.5],[26.0,43.1]],"w":4,"n":"大智街"},{"p":[[-77.2,30.9],[-21.5,8.6],[77.2,-30.9]],"w":7,"n":"中華路"},{"p":[[-106.7,-54.4],[-77.2,30.9]],"w":7,"n":"新生路2巷"},{"p":[[-55.7,-74.5],[-38.5,-32.8],[-21.5,8.6],[11.8,89.3]],"w":7,"n":"成功路"},{"p":[[-53.9,115.3],[-49.9,125.7],[-32.9,169.1],[19.5,152.5],[24.5,148.9],[25.4,141.3],[26.8,135.2],[32.9,131.6],[127.4,98.4],[133.1,98.3],[138.6,99.3],[142.2,101.9],[148.6,118.0]],"w":4,"n":"東海路"},{"p":[[-49.9,125.7],[-73.8,133.8],[-98.0,145.8],[-101.1,149.0],[-106.3,157.4],[-117.5,175.6],[-120.2,182.0],[-121.3,190.7],[-119.6,202.4],[-117.5,209.9],[-116.7,221.0],[-118.8,234.3],[-118.8,239.6],[-117.1,242.5],[-113.9,245.6],[-109.7,247.9],[-106.2,248.7],[-99.2,249.6],[-93.4,250.3],[-90.1,251.0],[-86.7,252.6],[-83.2,255.9],[-69.1,291.0],[-69.1,293.3],[-72.9,322.1],[-73.4,331.1],[-73.8,336.5],[-87.7,357.2]],"w":4,"n":"東海路"},{"p":[[-76.8,60.7],[-119.3,118.3],[-138.6,141.4],[-151.5,157.0],[-158.5,169.9],[-164.5,188.4],[-165.5,191.4],[-170.4,206.4],[-172.6,222.1],[-174.7,239.0],[-177.1,262.5],[-175.9,277.7],[-173.5,287.6]],"w":4,"n":""},{"p":[[-173.3,71.3],[-153.0,62.7],[-77.2,30.9]],"w":7,"n":""},{"p":[[-242.9,215.4],[-226.9,217.3],[-210.3,212.9],[-186.5,148.3],[-180.0,129.6],[-172.8,119.5],[-117.3,71.6],[-106.9,60.5],[-100.5,51.1],[-77.2,30.9]],"w":7,"n":"東發路"},{"p":[[-124.5,-16.4],[-162.5,10.7]],"w":4,"n":""},{"p":[[110.3,50.3],[58.4,70.9],[56.2,71.8],[11.8,89.3],[-53.9,115.3]],"w":7,"n":"中山東路"},{"p":[[77.2,-30.9],[95.7,14.5],[110.3,50.3]],"w":7,"n":"民族路"},{"p":[[77.2,-30.9],[176.7,-70.6],[249.2,-99.6]],"w":7,"n":"中華路"},{"p":[[-77.2,30.9],[-71.4,42.2],[-71.6,46.9],[-76.8,60.7],[-73.0,66.5],[-53.9,115.3]],"w":4,"n":"東海路"},{"p":[[140.5,55.3],[134.9,40.5]],"w":4,"n":""},{"p":[[56.2,71.8],[62.2,86.7],[68.7,102.5]],"w":2,"n":""},{"p":[[58.4,70.9],[64.4,85.8],[68.6,96.0],[72.4,96.6]],"w":4,"n":""},{"p":[[83.2,100.5],[126.0,83.4]],"w":2,"n":""},{"p":[[68.7,102.5],[75.9,103.5],[83.2,100.5]],"w":2,"n":""}],"blds":[{"p":[[51.4,-46.4],[45.8,-60.9],[61.1,-66.7],[66.6,-52.2]],"h":10},{"p":[[143.9,72.3],[119.7,82.0],[105.7,87.6],[81.6,97.3],[74.0,100.3],[73.7,99.6],[72.4,96.6],[70.6,92.1],[78.2,89.0],[79.1,88.7],[77.7,85.3],[81.7,83.7],[80.1,79.6],[79.7,78.7],[99.8,70.6],[97.8,65.8],[110.4,60.7],[112.3,65.6],[132.4,57.5],[132.7,58.5],[140.5,55.3],[144.7,53.7],[146.3,57.8],[147.7,61.1],[151.0,69.4]],"h":10},{"p":[[74.0,100.3],[73.7,99.6],[69.9,99.0],[67.0,96.1],[63.0,86.4],[62.2,86.7],[61.5,87.0],[67.9,102.8],[68.7,102.5]],"h":3.2}]};
-function mapScene(M){
+function mapScene(M,tf){
+  if(tf)M={roads:M.roads.map(r=>({...r,p:r.p.map(([x,z])=>tf(x,z))})),blds:M.blds.map(b=>({...b,p:b.p.map(([x,z])=>tf(x,z))}))};
   const rm=new THREE.MeshBasicMaterial({color:0x3a3e44,depthWrite:false}),pm=new THREE.MeshBasicMaterial({color:0x8d8f93,depthWrite:false});
   const named=new Map();
   M.roads.forEach(r=>{const m=r.w<=2?pm:rm,y=r.w<=2?.02:.015;
@@ -696,9 +752,18 @@ const SCEN={
       {at:900,t:'環保局人員抵達，要求說明洩漏量與流向',fx(){driveIn('car','環保局車輛',47,-laneZ(),0,'e');return P(47,0,-laneZ())}},
       {at:1020,t:'槽車業者回報吸油車及吊車約 30 分鐘後抵達',fx(){addEntity('note',58,-12,0,'業者吸油車、吊車（30 分）',1,true);return P(58,0,-12)}},
       {at:1110,t:'完成止漏，洩漏範圍不再擴大',fx(){const e=findEnt('spill');if(!e)return null;setStatus(e,'已止漏');return e.obj.position.clone()}}]},
-  chenggong:{name:'成功鎮中華路周邊',desc:'依開放地圖資料繪製的真實道路，建築由教官從「其他→透天厝」自行擺放',top:'var(--c-res)',cam:[60,70,90],tgt:[0,0,0],env(){mapScene(MAP_CG)},init:[],inj:[{t:'現場出現新的狀況'}]},
   blank:{name:'空白場景',desc:'只有道路，自行布置情境',top:'var(--c-ext)',cam:[34,30,38],tgt:[0,0,0],env(){road(10)},init:[],inj:[{t:'現場出現新的狀況'}]}
 };
+/* 成功鎮中華路與成功路轉角：L 形街廓，兩側連棟透天厝；情境沿用透天厝火警。
+   地圖已旋轉成中華路朝東西、成功路朝南北，原點放在起火透天厝前，與透天厝火警座標一致 */
+SCEN.chenggong={name:'成功鎮中華路 L 形街廓火警',desc:'中華路與成功路轉角，兩側連棟透天厝，二樓起火（情境同透天厝火警）',top:'var(--c-res)',cam:[32,30,34],tgt:[0,0,-14],
+  env(){mapScene(MAP_CG,(x,z)=>{const dx=x+21.5,dz=z-8.6;return[dx*.9285-dz*.3714+23,dx*.3714+dz*.9285]});
+    const W=['#c9b79c','#b8bfc4','#d6cdb8','#a9b4a3','#cfc6bd'],H=[13,10,13,16,10,13];
+    for(let i=0;i<6;i++){if(i===2)continue;const h=house(6.6,H[i],14,W[i%5]);h.position.set(13.2-6.6*i,0,-15);envGroup.add(h)}
+    for(let j=0;j<5;j++){const h=house(6.6,H[(j+3)%6],14,W[(j+2)%5]);h.position.set(8,0,-25.3-6.6*j);h.rotation.y=Math.PI/2;envGroup.add(h)}
+    const b=interiorHouse();b.position.set(HB.x,0,HB.z);envGroup.add(b);S.bld=b},
+  init:SCEN.house.init.map(a=>a[0]==='hydrant'?['hydrant',10,-4.6]:a[0]==='car'?['car',12,-1.6,0]:a),
+  inj:SCEN.house.inj.map(o=>o.t.includes('鄰棟')?{at:o.at,t:o.t,fx(){const w=findEnt('wind');addEntity('smoke',6.6,-7.6,w?w.obj.rotation.y:0,'鄰棟三樓濃煙',.8,true,6.6);return P(6.6,6.4,-8)}}:o)};
 
 /* ---------- 狀態 ---------- */
 const S={scen:'house',speed:1,clock:{run:false,base:0,startAt:0,speed:1},msel:[],pendingIdx:null,role:'ctrl',cat:'all',q:'',placing:null,ghost:null,sel:null,labels:true,run:false,elapsed:0,last:0,log:[]};
