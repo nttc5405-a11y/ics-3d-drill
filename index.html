@@ -215,6 +215,13 @@ dialog h2{margin:0 0 10px;font-size:16px}
 #userDlg .ubtns,#fbDlg .ubtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 #fbDlg label{display:block;margin:10px 0 4px;color:var(--muted);font-size:13px}
 #fbDlg textarea{min-height:90px;resize:vertical}
+#modSaveDlg input{width:100%;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:9px 12px;font:inherit}
+#modSaveDlg label{display:block;margin:10px 0 4px;color:var(--muted);font-size:13px}
+#modDlg .ubtns,#modSaveDlg .ubtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+#modList{list-style:none;padding:0;margin:8px 0;max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+#modList button{width:100%;text-align:left;border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:8px;padding:8px 12px;font:inherit}
+#modList button small{display:block;color:var(--muted);font-size:12px}
+#modNote{margin:8px 0 0;color:var(--muted);font-size:13px}
 #tipPanel{position:absolute;right:12px;top:64px;bottom:12px;width:360px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);z-index:12;display:none;flex-direction:column}
 #tipPanel.show{display:flex}
 #tipPanel header{display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line)}
@@ -241,6 +248,7 @@ dialog h2{margin:0 0 10px;font-size:16px}
     <button type="button" class="tbtn" id="mselBtn">腳本</button>
     <button type="button" class="tbtn" id="logBtn">紀錄</button>
     <button type="button" class="tbtn hide-m on" id="labelBtn">標籤</button>
+    <button type="button" class="tbtn" id="modSaveBtn" style="display:none">存成模組</button>
     <button type="button" class="tbtn" id="tipBtn" style="display:none">教官提示</button>
     <button type="button" class="tbtn" id="userBtn" style="display:none"></button>
     <button type="button" class="tbtn" id="homeBtn">首頁</button>
@@ -380,6 +388,20 @@ dialog h2{margin:0 0 10px;font-size:16px}
     <label for="fbText">其他意見或建議（選填，最多 1000 字）</label><textarea id="fbText" maxlength="1000"></textarea>
     <div class="ubtns"><button type="button" class="tbtn" id="fbCancel">取消</button><button type="button" class="tbtn" id="fbSend" style="background:var(--red);color:#fff;border-color:var(--red)">送出</button></div>
   </dialog>
+  <dialog id="modDlg">
+    <h2 tabindex="-1" autofocus>從模組載入</h2>
+    <p class="note" id="modInfo">模組是教官事先布置好的乾淨場景（不含計時與紀錄）。選一個後，再按「單機演練」或「建立連線場次」開始。</p>
+    <ul id="modList"></ul>
+    <div class="ubtns"><button type="button" class="tbtn" id="modClose">關閉</button></div>
+  </dialog>
+  <dialog id="modSaveDlg">
+    <h2 tabindex="-1" autofocus>存成模組</h2>
+    <p class="note">會把目前場景的物件配置存到 Google 試算表，其他教官登入後都能載入。</p>
+    <label for="mName">模組名稱（30 字以內）</label><input id="mName" maxlength="30" autocomplete="off">
+    <label for="mDesc">說明（選填）</label><input id="mDesc" maxlength="100" autocomplete="off">
+    <label for="mCode">模組驗證碼</label><input id="mCode" type="password" autocomplete="off">
+    <div class="ubtns"><button type="button" class="tbtn" id="mCancel">取消</button><button type="button" class="tbtn" id="mSend" style="background:var(--red);color:#fff;border-color:var(--red)">儲存</button></div>
+  </dialog>
   <div id="placeTip"></div>
   <div id="floorNav" aria-label="樓層檢視"><button type="button" data-f="ext" class="on">外觀</button><button type="button" data-f="3">4F</button><button type="button" data-f="2">3F</button><button type="button" data-f="1">2F</button><button type="button" data-f="0">1F</button></div>
   <div id="hint">拖曳旋轉視角　先點選物件再拖曳可移動　WASD 移動　右鍵平移　R 旋轉　Del 刪除</div>
@@ -410,7 +432,9 @@ dialog h2{margin:0 0 10px;font-size:16px}
           <button type="button" class="tbtn" id="hostBtn">建立連線場次</button>
           <button type="button" class="tbtn" id="goBtn">單機演練</button>
           <button type="button" class="tbtn" id="resumeBtn" style="display:none">載入上次儲存</button>
+          <button type="button" class="tbtn" id="modBtn" style="display:none">從模組載入</button>
         </div>
+        <p id="modNote" style="display:none"></p>
         <div class="go" style="margin-top:10px">
           <input id="rejoinCode" class="tbtn" placeholder="房號" inputmode="numeric" maxlength="4" style="width:90px">
           <button type="button" class="tbtn" id="rejoinBtn">回到我建立的場次</button>
@@ -1019,7 +1043,7 @@ function flash(t){showBanner('系統',t,2600)}
 
 /* ---------- 開始畫面 ---------- */
 $('#scenGrid').innerHTML=Object.entries(SCEN).map(([k,s])=>`<button type="button" class="scard ${k===S.scen?'on':''}" data-k="${k}" style="border-top-color:${s.top}"><b>${s.name}</b><span>${s.desc}</span></button>`).join('');
-$('#scenGrid').addEventListener('click',ev=>{const b=ev.target.closest('.scard');if(!b)return;S.scen=b.dataset.k;document.querySelectorAll('.scard').forEach(c=>c.classList.toggle('on',c===b))});
+$('#scenGrid').addEventListener('click',ev=>{const b=ev.target.closest('.scard');if(!b)return;S.scen=b.dataset.k;S.mod=null;$('#modNote').style.display='none';document.querySelectorAll('.scard').forEach(c=>c.classList.toggle('on',c===b))});
 function setRole(r){S.role=r;document.querySelectorAll('[data-role]').forEach(x=>x.classList.toggle('on',x.dataset.role===r));$('#ctrlBox').hidden=r!=='ctrl';$('#joinBox').hidden=r==='ctrl'}
 document.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>setRole(b.dataset.role));
 $('#hName').value=lsGet('ics3d:hname')||'';$('#jName').value=lsGet('ics3d:name')||'';if(lsGet('ics3d:pos'))$('#jPos').value=lsGet('ics3d:pos');
@@ -1091,11 +1115,13 @@ function launch(data,opt={}){
   const ms0=opt.online?S._msel:(data&&data.msel);S._msel=null;S.msel=(ms0&&ms0.length===sc.inj.length)?ms0:sc.inj.map(()=>'wait');S.speed=(clockObj().speed)||1;$('#speed').value=String(S.speed);renderMsel();
   $('#mselBtn').style.display=S.role==='ctrl'?'':'none';$('#mselPanel').classList.remove('show');
   if(data){data.ents.forEach(e=>{const n=addEntity(e.type,e.x,e.z,e.rot,e.name,e.scale||1,true,e.y||0);if(n&&e.status){n.status=e.status;renderLabel(n)}});camera.position.fromArray(data.cam);controls.target.fromArray(data.tgt)}
-  else{if(!opt.join){sc.init.forEach(([t,x,z,r=0,n=null,s=1,y=0])=>addEntity(t,x,z,r,n,s,true,y));log(`載入情境：${sc.name}`+(opt.online?`（連線場次 ${NET.code}）`:`（${S.role==='ctrl'?'主控':'學員'}）`),'sys')}
-    else log(opt.online&&!NET.host?'加入場次':'回到場次','sys');camera.position.set(...sc.cam);controls.target.set(...sc.tgt)}
+  else{const md=(!opt.join&&S.mod&&S.mod.scen===S.scen)?S.mod:null;
+    if(!opt.join){if(md)md.ents.forEach(e=>addEntity(e.type,e.x,e.z,e.rot||0,e.name,e.scale||1,true,e.y||0));else sc.init.forEach(([t,x,z,r=0,n=null,s=1,y=0])=>addEntity(t,x,z,r,n,s,true,y));
+      log((md?`載入模組：${md.name}`:`載入情境：${sc.name}`)+(opt.online?`（連線場次 ${NET.code}）`:`（${S.role==='ctrl'?'主控':'學員'}）`),'sys')}
+    else log(opt.online&&!NET.host?'加入場次':'回到場次','sys');camera.position.set(...(md?md.cam:sc.cam));controls.target.set(...(md?md.tgt:sc.tgt))}
   renderLog();
   $('#scenName').textContent=`${sc.name}・${NET.on?(NET.host?'教官':NET.me.label):(S.role==='ctrl'?'主控':'學員')}`;
-  $('#injectBtn').style.display=S.role==='ctrl'?'':'none';$('#tipBtn').style.display=S.role==='ctrl'?'':'none';if(S.role!=='ctrl')$('#tipPanel').classList.remove('show');
+  $('#injectBtn').style.display=S.role==='ctrl'?'':'none';$('#tipBtn').style.display=S.role==='ctrl'?'':'none';$('#modSaveBtn').style.display=(S.role==='ctrl'&&AUTH.token&&AUTH.user&&AUTH.user.key!=='tr'&&(!NET.on||NET.host))?'':'none';if(S.role!=='ctrl')$('#tipPanel').classList.remove('show');
   if(S.role!=='ctrl'&&S.cat==='env')S.cat='all';
   renderTabs();renderItems();renderSceneList();
   $('#start').classList.add('hide');controls.update()}
@@ -1144,6 +1170,7 @@ function applyView(v){
   document.querySelector('[data-role="ctrl"]').style.display=(ins||u.key==='admin')?'':'none';
   document.querySelector('[data-role="trainee"]').style.display=(!ins||u.key==='admin')?'':'none';
   setRole(ins?'ctrl':'trainee');
+  $('#modBtn').style.display=(AUTH.token&&u.key!=='tr')?'':'none';
   const lock=u.key!=='admin';
   $('#hName').value=u.name;$('#jName').value=u.name;$('#hName').readOnly=lock;$('#jName').readOnly=lock}
 function enterApp(user,token){
@@ -1181,6 +1208,32 @@ $('#fbSend').onclick=async()=>{const b=$('#fbSend'),r1=$('#fb1').value,r2=$('#fb
   fbId=fbId||(Date.now()+'-'+Math.random().toString(36).slice(2,8));busy(b,true);
   try{const r=await gas({type:'feedback',token:AUTH.token,id:fbId,r1,r2,r3,text,session:NET.code||'',scen:SCEN[S.scen]?SCEN[S.scen].name:''});
     if(r.ok){$('#fbDlg').close();['#fb1','#fb2','#fb3','#fbText'].forEach(q=>$(q).value='');fbId=null;flash('謝謝您的意見回饋')}else flash(r.err||'送出失敗，內容已保留，請稍後再試')}
+  catch(err){console.error(err);flash('連線失敗，內容已保留，請稍後再試')}finally{busy(b,false)}};
+/* 場景模組：存在 Google 試算表，教官按需載入；新增需驗證碼（驗證在試算表端） */
+const modOk=()=>{if(!AUTH.token){flash('單機試用模式無法使用模組');return false}return true};
+function modData(){const r=n=>Math.round(n*100)/100;return{scen:S.scen,cam:camera.position.toArray().map(r),tgt:controls.target.toArray().map(r),
+  ents:[...entities.values()].map(e=>({type:e.type,name:e.name,x:r(e.obj.position.x),y:r(e.obj.position.y),z:r(e.obj.position.z),rot:r(e.obj.rotation.y),scale:e.scale||1}))}}
+$('#modBtn').onclick=async()=>{if(!modOk())return;const ul=$('#modList');ul.innerHTML='<li style="color:var(--muted)">讀取中…</li>';$('#modDlg').showModal();
+  try{const r=await gas({type:'modlist',token:AUTH.token});
+    if(!r.ok){ul.innerHTML=`<li style="color:var(--muted)">${esc(r.err||'讀取失敗')}</li>`;return}
+    ul.innerHTML=r.items.map(m=>`<li><button type="button" data-n="${esc(m.n)}">${esc(m.n)}<small>${esc(m.d||'（無說明）')}　${esc(m.by)}・${esc(m.at)}</small></button></li>`).join('')||'<li style="color:var(--muted)">目前沒有模組，請先在演練中按「存成模組」建立。</li>'}
+  catch(err){console.error(err);ul.innerHTML='<li style="color:var(--muted)">連線失敗，請稍後再試</li>'}};
+$('#modList').addEventListener('click',async ev=>{const b=ev.target.closest('button[data-n]');if(!b)return;b.disabled=true;
+  try{const r=await gas({type:'modget',token:AUTH.token,name:b.dataset.n});if(!r.ok){flash(r.err||'載入失敗');return}
+    const d=JSON.parse(r.data);if(!SCEN[d.scen]||!Array.isArray(d.ents)){flash('這個模組的場景已不存在');return}
+    S.mod={name:b.dataset.n,scen:d.scen,cam:d.cam,tgt:d.tgt,ents:d.ents};S.scen=d.scen;
+    document.querySelectorAll('.scard').forEach(c=>c.classList.toggle('on',c.dataset.k===S.scen));
+    $('#modNote').textContent=`已選擇模組「${b.dataset.n}」（場景：${SCEN[d.scen].name}，${d.ents.length} 項物件）。請按「單機演練」或「建立連線場次」開始。`;$('#modNote').style.display='';$('#modDlg').close()}
+  catch(err){console.error(err);flash('連線失敗，請稍後再試')}finally{b.disabled=false}});
+$('#modClose').onclick=()=>$('#modDlg').close();
+$('#modSaveBtn').onclick=()=>{if(!modOk())return;$('#mCode').value='';$('#modSaveDlg').showModal()};
+$('#mCancel').onclick=()=>{$('#mCode').value='';$('#modSaveDlg').close()};
+$('#mSend').onclick=async()=>{const b=$('#mSend'),name=$('#mName').value.trim(),code=$('#mCode').value;
+  if(!name){flash('請輸入模組名稱');return}if(!code){flash('請輸入模組驗證碼');return}
+  const data=JSON.stringify(modData());if(data.length>45000){flash('場景物件太多，超過可儲存的大小');return}
+  busy(b,true);
+  try{const r=await gas({type:'modsave',token:AUTH.token,name,desc:$('#mDesc').value.trim(),code,data});
+    $('#mCode').value='';if(r.ok){$('#modSaveDlg').close();$('#mName').value='';$('#mDesc').value='';flash(`模組「${name}」已儲存`)}else flash(r.err||'儲存失敗，內容已保留')}
   catch(err){console.error(err);flash('連線失敗，內容已保留，請稍後再試')}finally{busy(b,false)}};
 renderTabs();renderItems();renderSceneList();loop();
 })();
