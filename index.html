@@ -224,6 +224,8 @@ dialog h2{margin:0 0 10px;font-size:16px}
 #modList button{width:100%;text-align:left;border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:8px;padding:8px 12px;font:inherit}
 #modList button small{display:block;color:var(--muted);font-size:12px}
 #modNote{margin:8px 0 0;color:var(--muted);font-size:13px}
+#start.guest .srole,#start.guest #jCode,#start.guest #jName,#start.guest #jPos,#start.guest #joinBtn,#start.guest #joinBox .note,#start.guest #netNote{display:none}
+#lGuest[hidden]{display:none}
 #tipPanel{position:absolute;right:12px;top:64px;bottom:12px;width:360px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);z-index:12;display:none;flex-direction:column}
 #tipPanel.show{display:flex}
 #tipPanel header{display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line)}
@@ -359,7 +361,7 @@ dialog h2{margin:0 0 10px;font-size:16px}
     <div id="marq" hidden><div class="mtrack"><span></span></div></div>
     <div class="sbox lbox">
       <h1><i></i>ICS 3D 指揮演練</h1>
-      <p class="lead">請使用教官發給您的帳號登入。</p>
+      <p class="lead" id="lLead">請使用教官發給您的帳號登入。</p>
       <form id="loginForm">
         <input id="lUser" autocomplete="username" placeholder="帳號" autocapitalize="off" spellcheck="false">
         <input id="lPass" type="password" autocomplete="current-password" placeholder="密碼">
@@ -367,6 +369,7 @@ dialog h2{margin:0 0 10px;font-size:16px}
       </form>
       <p class="note" id="lMsg" role="alert"></p>
       <button type="button" class="tbtn" id="lDemo" hidden>單機試用（未連接登入服務）</button>
+      <button type="button" class="tbtn" id="lGuest" hidden>直接試玩（免登入・單機學員模式）</button>
       <div class="introWrap">
         <video id="introVid" src="intro.mp4" poster="intro-poster.jpg" controls playsinline preload="none" aria-label="系統介紹影片，約 1 分半鐘，附字幕與背景音樂"></video>
         <p class="note">第一次使用？點上方播放，約 1 分半鐘看懂（附字幕與背景音樂，可自行調整音量）</p>
@@ -649,6 +652,7 @@ function smokeCol(color,op,rise=16,spread=5){return ()=>{const g=new THREE.Group
   g.userData.anim=t=>g.children.forEach(m=>{const p=(t*.18+m.userData.o)%1;m.position.set(p*spread,2+p*rise,Math.sin(m.userData.o*9)*.8);m.scale.setScalar(1+p*4);m.material.opacity=op*(1-p)});return g}}
 function waterJet(fog){const g=new THREE.Group();
   const nz=cyl(.06,.1,1.1,0xc9a227,0,1.3,0);nz.rotation.z=Math.PI/2;g.add(nz);
+  const ff=person(C.turnout,C.red,{band:true});ff.position.set(-.55,0,0);ff.rotation.y=Math.PI/2;g.add(ff);
   const N=fog?60:28,L=fog?9:17,mt=new THREE.MeshBasicMaterial({color:0xa9d8ff,transparent:true,opacity:fog?.55:.85,depthWrite:false});
   for(let i=0;i<N;i++){const d=new THREE.Mesh(new THREE.SphereGeometry(fog?.2:.1,6,5),mt);d.userData.o=i/N;d.userData.k=(i*.618)%1;d.userData.j=((i*.37)%1)-.5;g.add(d)}
   g.userData.anim=t=>g.children.forEach(d=>{if(d.userData.o===undefined)return;const p=(t*(fog?.7:1)+d.userData.o)%1;
@@ -658,14 +662,17 @@ Object.assign(CATALOG,{
   jet:{cat:'act',name:'射水（直線水柱）',build:()=>waterJet(false),noShadow:true,h:3},
   fog:{cat:'act',name:'射水（霧狀水柱）',build:()=>waterJet(true),noShadow:true,h:3},
   search:{cat:'act',name:'搜索範圍',build(){const g=new THREE.Group();g.add(flat(new THREE.CircleGeometry(4.5,40),0x2fb4ff,.04,.16));g.add(flat(new THREE.RingGeometry(4.3,4.55,48),0x2fb4ff,.05,.9));
-    const sw=flat(new THREE.CircleGeometry(4.4,24,0,Math.PI/4),0x9be1ff,.06,.55);g.add(sw);g.userData.anim=t=>{sw.rotation.z=t*1.6};return g},noShadow:true,flatPick:true,h:1},
+    const sw=flat(new THREE.CircleGeometry(4.4,24,0,Math.PI/4),0x9be1ff,.06,.55);g.add(sw);const ff=person(C.turnout,C.red,{band:true});g.add(ff);const fl=box(.1,.1,.35,0xffe680,.45,1.25,.2);g.add(fl);
+    g.userData.anim=t=>{sw.rotation.z=t*1.6};return g},noShadow:true,flatPick:true,h:1},
   vent:{cat:'act',name:'正壓通風',build(){const g=new THREE.Group();const dk=mat(0x333b42);
     const ring=new THREE.Mesh(new THREE.TorusGeometry(.7,.09,8,24),dk);ring.rotation.y=Math.PI/2;ring.position.y=.9;ring.castShadow=true;g.add(ring);g.add(box(.5,.5,.9,dk,0,.25,0));
     const bl=new THREE.Group();bl.position.y=.9;for(let k=0;k<3;k++){const w=new THREE.Group();w.rotation.x=k*2.094;w.add(box(.05,.62,.14,0x9aa0a6,0,.31,0));bl.add(w)}g.add(bl);
+    const ff=person(C.turnout,C.red,{band:true});ff.position.set(-.2,0,1.5);g.add(ff);
     const pm=new THREE.MeshBasicMaterial({color:0xdff3ff,transparent:true,opacity:.5,depthWrite:false}),N=20;
     for(let i=0;i<N;i++){const a=new THREE.Mesh(new THREE.SphereGeometry(.14,6,5),pm);a.userData.o=i/N;a.userData.k=((i*.618)%1)-.5;a.userData.j=((i*.37)%1)-.5;g.add(a)}
     g.userData.anim=t=>{bl.rotation.x=t*18;g.children.forEach(a=>{if(a.userData.o===undefined)return;const p=(t*.8+a.userData.o)%1;a.position.set(.9+p*7,.9+a.userData.k*p*2.2,a.userData.j*p*2.2)})};return g},noShadow:false,h:2.5},
   breach:{cat:'act',name:'破壞作業',build(){const g=new THREE.Group();for(const s of[-1,1]){const b=box(.16,.16,2,0xc8102e,0,1.2,0);b.rotation.x=s*.8;g.add(b)}
+    const ff=person(C.turnout,C.red,{band:true});ff.position.set(-1.5,0,0);g.add(ff);const hl=box(1.5,.08,.08,0x9aa0a6,-.75,1.15,0);hl.rotation.z=.08;g.add(hl);
     const em=new THREE.MeshBasicMaterial({color:0xffb020}),N=14,sp=[];for(let i=0;i<N;i++){const m=new THREE.Mesh(new THREE.BoxGeometry(.08,.08,.08),em);m.userData.i=i;g.add(m);sp.push(m)}
     g.userData.anim=t=>sp.forEach(m=>{const i=m.userData.i,p=(t*1.3+i/N)%1,a=i*2.4;m.position.set(Math.cos(a)*p*1.6,1.2+(1.4+(i%3)*.5)*p-3.2*p*p,Math.sin(a)*p*1.6);m.visible=p<.9});return g},noShadow:true,h:2.5},
   smokeBlack:{cat:'env',name:'黑色濃煙',build:smokeCol(0x14161a,.72),noShadow:true,h:4},
@@ -730,7 +737,7 @@ function mapScene(M,tf){
 
 const SCEN={
   house:{name:'透天厝火警',desc:'四層透天厝二樓起火，可切換樓層進入室內',top:'var(--c-veh)',cam:[34,34,40],tgt:[0,0,-8],
-    env(){road(10);row(-15,0,-5,5,10,0);row(15,Math.PI,-5,5,10);const b=interiorHouse();b.position.set(HB.x,0,HB.z);envGroup.add(b);S.bld=b},
+    env(){road(10);row(-15,0,-5,5,10,0);const b=interiorHouse();b.position.set(HB.x,0,HB.z);envGroup.add(b);S.bld=b},
     init:[['fire',-.8,-10.6,0,'二樓主臥室起火',.6,3.4],['smokeLayer',0,-15,0,'2F 濃煙層',1,3.4],['smoke',0,-7.6,0,'二樓窗口冒煙',.8,4.6],['hydrant',14,-6],['civ',-5,-6.2],['civ',-6.2,-6.5],['car',12,-3.4,0]],
     inj:[
       {at:0,t:'119 報案：透天厝二樓冒出濃煙，報案人稱疑有人受困',fx:()=>P(0,0,-8)},
@@ -794,6 +801,54 @@ SCEN.chenggong={name:'成功鎮中華路 L 形街廓火警',desc:'中華路與�
     const b=interiorHouse();b.position.set(HB.x,0,HB.z);envGroup.add(b);S.bld=b},
   init:SCEN.house.init.map(a=>a[0]==='hydrant'?['hydrant',10,-4.6]:a[0]==='car'?['car',12,-1.6,0]:a),
   inj:SCEN.house.inj.map(o=>o.t.includes('鄰棟')?{at:o.at,t:o.t,fx(){const w=findEnt('wind');addEntity('smoke',6.6,-7.6,w?w.obj.rotation.y:0,'鄰棟三樓濃煙',.8,true,6.6);return P(6.6,6.4,-8)}}:o)};
+
+/* 化學工廠：廠區在道路北側（z 為負），倉庫在西、儲槽區在東，北側有住宅區 */
+function plantEnv(){
+  const fl=flat(new THREE.PlaneGeometry(100,60),0x8e9297,.012,1);fl.position.set(0,.012,-38);envGroup.add(fl);
+  const add=o=>{envGroup.add(o);return o};
+  // 倉庫（起火處）：鐵皮牆面、三座捲門
+  const wh=add(box(24,8,16,mat(0xb8c2cb),-14,4,-30));
+  const roof=add(box(24.6,.5,16.6,0x6f7a84,-14,8.25,-30));roof.castShadow=false;
+  for(const x of[-21,-14,-7])add(box(4.4,4.2,.2,0x4a5560,x,2.1,-21.9));
+  add(box(24.2,.5,.2,0xc8102e,-14,5.6,-21.9));
+  // 辦公室
+  const of=house(10,8,8,'#d6cdb8');of.position.x=-36;of.position.z=-28;add(of);
+  // 儲槽區：三座立式儲槽、圍堤、管架
+  [16,27,38].forEach((x,i)=>{add(cyl(4.2,4.2,11,0xe8ebee,x,5.5,-36,28));
+    const d=new THREE.Mesh(new THREE.SphereGeometry(4.2,20,8,0,Math.PI*2,0,Math.PI/2),mat(0xe8ebee));d.position.set(x,11,-36);d.castShadow=true;add(d);
+    const tg=new THREE.Mesh(new THREE.PlaneGeometry(3.2,1.6),new THREE.MeshBasicMaterial({map:textTex('T-'+(i+1),'#e8ebee','#222',256,128,80)}));tg.position.set(x,6,-31.78);add(tg)});
+  add(box(34,.7,.4,0xb0b4b8,27,.35,-28));add(box(34,.7,.4,0xb0b4b8,27,.35,-44));add(box(.4,.7,16,0xb0b4b8,10,.35,-36));add(box(.4,.7,16,0xb0b4b8,44,.35,-36));
+  const pipe=cyl(.3,.3,14,0x7a8590,4,4,-34);pipe.rotation.z=Math.PI/2;add(pipe);
+  for(const x of[-1,4,9])add(box(.3,4,.3,0x59636d,x,2,-34));
+  // 圍牆、大門、廠名
+  add(box(44,1.8,.12,0x9aa0a6,-28,.9,-8));add(box(48,1.8,.12,0x9aa0a6,26,.9,-8));
+  add(box(.12,1.8,60,0x9aa0a6,-50,.9,-38));add(box(.12,1.8,60,0x9aa0a6,50,.9,-38));add(box(100,1.8,.12,0x9aa0a6,0,.9,-68));
+  for(const x of[-6,2])add(box(.4,3,.4,0x59636d,x,1.5,-8));
+  const sg=new THREE.Mesh(new THREE.PlaneGeometry(8,2),new THREE.MeshBasicMaterial({map:textTex('○○化學工廠','#1d4f9c','#fff',512,128,64)}));sg.position.set(-2,3.6,-8);add(sg);
+  // 北側住宅區（下風處）與樹木
+  for(let i=0;i<4;i++){const h=house(6.6,[10,13,10,13][i],12,['#c9b79c','#b8bfc4','#d6cdb8','#a9b4a3'][i]);h.position.x=26+i*8;h.position.z=-84;h.rotation.y=Math.PI;add(h)}
+  for(const x of[-70,-60,60,70,80])tree(x,-20);
+}
+SCEN.chem={name:'化學工廠火警',desc:'溶劑倉庫起火、鄰近儲槽受熱，需評估爆炸、毒性氣體與消防廢水風險',top:'var(--c-env)',cam:[58,46,36],tgt:[0,0,-28],
+  env(){road(10);plantEnv()},
+  init:[['fire',-14,-30,0,'倉庫屋頂起火',1.8,8],['fire',-8,-21.4,0,'倉庫捲門起火',.9],['smokeBlack',-14,-30,.3,'黑色濃煙',1.4,8],['hydrant',-16,-6.4],['hydrant',16,-6.4],
+    ['civ',-30,-11],['civ',-32,-12],['civ',-28,-12],['note',-30,-14,0,'員工集合點'],['wind',-58,-14,.3]],
+  inj:[
+    {at:0,t:'119 報案：化學工廠溶劑倉庫起火，冒出大量黑煙，廠內仍有員工',fx:()=>P(-14,6,-28)},
+    {at:90,t:'第一梯次水箱車 2 輛、化災搶救車 1 輛、救護車 1 輛抵達，於上風處（西側）集結',fx:()=>firstWave([['engine','第一梯次 水箱車 1',-34],['engine','第一梯次 水箱車 2',-43],['rescue','化災搶救車',-52],['amb','第一梯次 救護車',-61]])},
+    {at:180,t:'廠方防災人員回報：倉庫存放甲苯、丙酮等易燃溶劑，另有 2 名員工尚未到集合點',fx(){const e=findEnt('fire','倉庫屋頂');if(e)setStatus(e,'甲苯／丙酮');return P(-14,4,-30)}},
+    {at:270,t:'風向轉為東北風，黑煙飄向北側住宅區',fx:()=>setWind(Math.PI/4)},
+    {at:360,t:'儲槽區 T-3 受輻射熱影響，槽壁溫度持續上升，廠方請求冷卻',fx(){addEntity('note',38,-30,0,'T-3 槽壁受熱',1,true);return P(38,0,-34)}},
+    {at:450,t:'倉庫內發生閃燃，火勢瞬間擴大並向屋頂竄出',fx(){addEntity('flash',-14,-28,0,'倉庫閃燃',1.6,true,6);return P(-14,8,-28)}},
+    {at:540,t:'消防廢水與溶劑混合流入排水溝，疑有外洩至廠外',fx(){addEntity('spill',-4,-13,0,'溶劑外洩',1,true);return P(-4,0,-13)}},
+    {at:630,t:'偵檢回報下風處有機蒸氣濃度偏高，LEL 達 20%',fx(){addEntity('vapor',20,-60,0,'有機蒸氣擴散',1.6,true);return P(20,0,-60)}},
+    {at:720,t:'儲槽 T-3 泄壓閥作動，發出巨響並冒出白煙，需評估爆炸風險',fx(){addEntity('smokeWhite',38,-36,0,'T-3 泄壓排氣',1,true,10);return P(38,10,-36)}},
+    {at:810,t:'廠方確認 2 名失聯員工位於倉庫東側辦公區，受困待救',fx(){const e=addEntity('victim',.5,-24,0,'受困員工',1,true);setStatus(e,'位置待確認');return P(.5,0,-24)}},
+    {at:900,t:'搜救小組自東側救出受困員工，吸入濃煙、意識模糊',fx(){const e=findEnt('victim','受困員工'),to=P(-1,0,-12);
+      if(e){e.name='救出員工';setStatus(e,'吸入濃煙');renderSceneList();const p0=e.obj.position.clone();push(e,2000,{x:to.x,y:0,z:to.z});tween(2000,k=>e.obj.position.lerpVectors(p0,to,ease(k)))}
+      else{const n=addEntity('victim',to.x,to.z,0,'救出員工',1,true);setStatus(n,'吸入濃煙')}return to}},
+    {at:990,t:'環保局人員抵達，要求攔阻消防廢水，避免流入排水溝',fx(){driveIn('car','環保局車輛',-24,laneZ());return P(-24,0,laneZ())}},
+    {at:1080,t:'主要火勢受控，持續冷卻儲槽，人員與裝備進行除污',fx(){fades('fire',.5);fades('flash',0);fades('smokeBlack',.6);return P(-14,6,-30)}}]};
 
 /* ---------- 狀態 ---------- */
 const S={scen:'house',speed:1,clock:{run:false,base:0,startAt:0,speed:1},msel:[],pendingIdx:null,role:'ctrl',cat:'all',q:'',placing:null,ghost:null,sel:null,labels:true,run:false,elapsed:0,last:0,log:[]};
@@ -1002,7 +1057,7 @@ function trafficJam(){const z=laneZ();
     tween(T,k=>{e.obj.position.x=start+(end-start)*ease(k)})}return P(-55,0,z)}
 function setWind(a){const w=findEnt('wind')||addEntity('wind',-24,-22,0,null,1,true);const norm=d=>((d%(Math.PI*2))+Math.PI*3)%(Math.PI*2)-Math.PI;
   const r0=w.obj.rotation.y,d=norm(a-r0);
-  const smokes=[...entities.values()].filter(e=>e.type==='smoke').map(e=>({e,r:e.obj.rotation.y,d:norm(a-e.obj.rotation.y)}));
+  const smokes=[...entities.values()].filter(e=>/^smoke(Black|Brown|White)?$/.test(e.type)).map(e=>({e,r:e.obj.rotation.y,d:norm(a-e.obj.rotation.y)}));
   push(w,2500,{rot:r0+d});smokes.forEach(s=>push(s.e,2500,{rot:s.r+s.d}));
   tween(2500,k=>{const kk=ease(k);w.obj.rotation.y=r0+d*kk;smokes.forEach(s=>s.e.obj.rotation.y=s.r+s.d*kk)},()=>{if(S.sel===w.id)updateInspector()});return w.obj.position.clone()}
 function focusPoint(){const f=findEnt('fire')||findEnt('tankerOver')||findEnt('spill');return f?f.obj.position.clone():controls.target.clone().setY(0)}
@@ -1169,8 +1224,14 @@ function roleKey(zh){return zh==='管理員'?'admin':zh==='教官'?'ins':'tr'}
 async function loadMarquee(){
   if(!GAS_URL)return;
   try{const r=await fetch(GAS_URL+'?action=marquee');const j=await r.json();const items=(j&&j.items)||[];
+    if(j&&j.login===false){$('#lGuest').hidden=false;$('#lLead').textContent='目前開放免登入試玩（單機、學員模式）。教官請用帳號登入，才能使用完整功能。'}
     if(!items.length)return;const m=$('#marq');m.querySelector('span').textContent=items.join('　　◆　　');m.style.setProperty('--mqs',(j.speed||30)+'s');m.hidden=false}
   catch(err){console.error(err)}}
+function enterGuest(){AUTH.user={acct:'guest',name:'訪客',role:'訪客',key:'tr'};AUTH.token='';
+  $('#login').classList.add('hide');try{$('#introVid').pause()}catch(e){}
+  $('#start').classList.add('guest');$('#userBtn').style.display='';$('#userBtn').textContent='訪客（單機・學員）';
+  applyView('tr');$('#jName').value='訪客';setRole('trainee')}
+$('#lGuest').onclick=enterGuest;
 function applyView(v){
   const ins=v==='ins',u=AUTH.user;
   document.querySelector('[data-role="ctrl"]').style.display=(ins||u.key==='admin')?'':'none';
@@ -1207,7 +1268,7 @@ $('#uViewIns').onclick=()=>switchView('ins');$('#uViewTr').onclick=()=>switchVie
 $('#tipBtn').onclick=()=>openPanel('#tipPanel');$('#tipClose').onclick=()=>$('#tipPanel').classList.remove('show');
 /* 意見回饋 */
 let fbId=null;
-$('#uFb').onclick=()=>{$('#userDlg').close();if(!AUTH.token){flash('單機試用模式無法送出意見回饋');return}$('#fbDlg').showModal()};
+$('#uFb').onclick=()=>{$('#userDlg').close();if(!AUTH.token){flash('訪客或單機試用模式無法送出意見回饋，請登入後再填');return}$('#fbDlg').showModal()};
 $('#fbCancel').onclick=()=>$('#fbDlg').close();
 $('#fbSend').onclick=async()=>{const b=$('#fbSend'),r1=$('#fb1').value,r2=$('#fb2').value,r3=$('#fb3').value,text=$('#fbText').value.trim();
   if(!r1&&!r2&&!r3&&!text){flash('請至少填寫一項');return}
