@@ -207,7 +207,9 @@ dialog h2{margin:0 0 10px;font-size:16px}
 #marq:hover .mtrack{animation-play-state:paused}
 @keyframes mq{to{transform:translateX(-100%)}}
 @media (prefers-reduced-motion:reduce){#marq{white-space:normal;padding:9px 12px}#marq .mtrack{animation:none;padding-left:0}}
-.lbox{margin:auto;width:min(400px,100%);padding:24px}
+.lbox{margin:auto;width:min(460px,100%);padding:24px}
+.introWrap{margin-top:20px}
+.introWrap video{display:block;width:100%;aspect-ratio:16/9;border-radius:10px;background:#12181f}
 .lbox form{display:flex;flex-direction:column;gap:10px}
 .lbox input,#fbDlg select,#fbDlg textarea{width:100%;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:9px 12px;font:inherit}
 .lbox .tbtn{padding:10px 12px}
@@ -365,6 +367,10 @@ dialog h2{margin:0 0 10px;font-size:16px}
       </form>
       <p class="note" id="lMsg" role="alert"></p>
       <button type="button" class="tbtn" id="lDemo" hidden>單機試用（未連接登入服務）</button>
+      <div class="introWrap">
+        <video id="introVid" src="intro.mp4" poster="intro-poster.jpg" controls playsinline preload="none" aria-label="系統介紹影片，約 1 分半鐘，附字幕與背景音樂"></video>
+        <p class="note">第一次使用？點上方播放，約 1 分半鐘看懂（附字幕與背景音樂，可自行調整音量）</p>
+      </div>
     </div>
   </div>
 
@@ -1175,7 +1181,7 @@ function applyView(v){
   $('#hName').value=u.name;$('#jName').value=u.name;$('#hName').readOnly=lock;$('#jName').readOnly=lock}
 function enterApp(user,token){
   user.key=roleKey(user.role);AUTH.user=user;AUTH.token=token||'';
-  $('#login').classList.add('hide');$('#lPass').value='';
+  $('#login').classList.add('hide');$('#lPass').value='';try{$('#introVid').pause()}catch(e){}
   $('#userBtn').style.display='';$('#userBtn').textContent=`${user.name}（${user.role}）`;
   applyView(user.key==='tr'?'tr':'ins')}
 $('#loginForm').addEventListener('submit',async ev=>{ev.preventDefault();
