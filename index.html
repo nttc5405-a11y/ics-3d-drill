@@ -224,6 +224,7 @@ dialog h2{margin:0 0 10px;font-size:16px}
 #modList button{width:100%;text-align:left;border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:8px;padding:8px 12px;font:inherit}
 #modList button small{display:block;color:var(--muted);font-size:12px}
 #modNote{margin:8px 0 0;color:var(--muted);font-size:13px}
+body.net-trainee #palette,body.net-trainee #palBtn{display:none!important}
 #start.guest .srole,#start.guest #jCode,#start.guest #jName,#start.guest #jPos,#start.guest #joinBtn,#start.guest #joinBox .note,#start.guest #netNote{display:none}
 #lGuest[hidden]{display:none}
 #tipPanel{position:absolute;right:12px;top:64px;bottom:12px;width:360px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);z-index:12;display:none;flex-direction:column}
@@ -1204,7 +1205,7 @@ function attach(){const r=NET.ref;
   $('#endSess').style.display=NET.host?'':'none';
   $('#clockBtn').style.display=NET.host?'':'none';
   flash(NET.host?`場次 ${NET.code} 已建立，請學員掃描 QR Code 加入`:`已加入場次 ${NET.code}`)}
-function leaveSession(silent){if(!NET.ref){NET.on=false;return}const r=NET.ref;
+function leaveSession(silent){document.body.classList.remove('net-trainee');if(!NET.ref){NET.on=false;return}const r=NET.ref;
   ['ents','log','meta','players'].forEach(k=>r.child(k).off());if(NET.injQ)NET.injQ.off();
   if(NET.on){const me=r.child('players/'+CID);me.onDisconnect().cancel();me.remove()}
   NET.on=false;NET.ref=null;NET.code=null;NET.host=false;NET.players={};NET.meta=null;
@@ -1244,6 +1245,7 @@ function launch(data,opt={}){
   $('#injectBtn').style.display=S.role==='ctrl'?'':'none';$('#tipBtn').style.display=S.role==='ctrl'?'':'none';$('#modSaveBtn').style.display=(S.role==='ctrl'&&AUTH.token&&AUTH.user&&AUTH.user.key!=='tr'&&(!NET.on||NET.host))?'':'none';if(S.role!=='ctrl')$('#tipPanel').classList.remove('show');
   if(S.role!=='ctrl'&&S.cat==='env')S.cat='all';
   renderTabs();renderItems();renderSceneList();
+  document.body.classList.toggle('net-trainee',!!(NET.on&&!NET.host));
   $('#start').classList.add('hide');controls.update()}
 
 /* ---------- 主迴圈 ---------- */
