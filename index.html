@@ -1,0 +1,1124 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ICS 3D 指揮演練</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e8ecf0;--panel:#ffffff;--panel2:#f1f3f5;--ink:#17202a;--muted:#5a6672;--line:#d3d9df;
+  --red:#c8102e;--hivis:#a4b800;--hivis-ink:#161c00;--shadow:0 8px 28px rgba(10,20,30,.18);
+  --c-veh:#c8102e;--c-ppl:#c99700;--c-res:#1d8549;--c-env:#dd5f14;--c-ext:#66727f;
+  color-scheme:light;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#11171e;--panel:#1a222b;--panel2:#232d38;--ink:#e7ecf0;--muted:#97a3ae;--line:#33404c;
+    --red:#ff5265;--hivis:#d4ea38;--hivis-ink:#141a00;--shadow:0 8px 28px rgba(0,0,0,.55);
+    --c-veh:#ff5265;--c-ppl:#f2c230;--c-res:#3fbf75;--c-env:#ff8a3d;--c-ext:#9aa6b2;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11171e;--panel:#1a222b;--panel2:#232d38;--ink:#e7ecf0;--muted:#97a3ae;--line:#33404c;
+  --red:#ff5265;--hivis:#d4ea38;--hivis-ink:#141a00;--shadow:0 8px 28px rgba(0,0,0,.55);
+  --c-veh:#ff5265;--c-ppl:#f2c230;--c-res:#3fbf75;--c-env:#ff8a3d;--c-ext:#9aa6b2;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%;margin:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;overflow:hidden;font-size:14px;line-height:1.5}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--hivis);outline-offset:2px}
+.num{font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-weight:600;letter-spacing:.02em}
+
+#app{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);bottom:env(safe-area-inset-bottom,0px);overflow:hidden}
+#topbar{position:absolute;left:0;right:0;top:0;height:52px;display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--panel);border-bottom:1px solid var(--line);z-index:20}
+#brand{font-weight:700;font-size:16px;white-space:nowrap;display:flex;align-items:center;gap:8px}
+#brand i{display:inline-block;width:10px;height:22px;background:var(--red);border-radius:2px}
+#scenName{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spacer{flex:1}
+.tbtn{border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:6px 12px;white-space:nowrap}
+.tbtn:hover{border-color:var(--muted)}
+.tbtn.on{background:var(--hivis);color:var(--hivis-ink);border-color:var(--hivis)}
+#clock{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:2px 4px 2px 10px}
+#clockTime{font-size:22px;min-width:58px}
+#clockBtn{border:0;background:var(--ink);color:var(--panel);border-radius:6px;width:32px;height:30px;font-size:12px}
+#injectBtn{background:var(--red);color:#fff;border-color:var(--red)}
+
+#stage{position:absolute;left:0;right:0;top:52px;bottom:0}
+#stage canvas{display:block;width:100%;height:100%;touch-action:none}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.tag3d{position:absolute;left:0;top:0;font-size:12px;font-weight:500;padding:1px 7px 1px 5px;border-radius:4px;background:rgba(18,24,31,.82);color:#f1f4f6;white-space:nowrap;border-left:4px solid var(--c-ext)}
+.tag3d[data-cat="veh"]{border-left-color:#ff4a5d}.tag3d[data-cat="ppl"]{border-left-color:#f2c230}
+.tag3d[data-cat="res"]{border-left-color:#3fbf75}.tag3d[data-cat="env"]{border-left-color:#ff8a3d}
+.tag3d.sel{background:#d4ea38;color:#141a00}
+.tag3d.alert{background:#c8102e;color:#fff}
+.tag3d em{font-style:normal;margin-left:6px;font-weight:700}
+.fxrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0 8px;font-size:13px}
+.fxrow select{border:1px solid var(--line);background:var(--panel2);border-radius:7px;padding:5px 8px}
+
+/* 指揮板風格的物件面板 */
+#palette{position:absolute;left:12px;top:64px;bottom:12px;width:280px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);display:flex;flex-direction:column;z-index:10;overflow:hidden}
+.ph{padding:12px 12px 8px;border-bottom:1px solid var(--line)}
+.ph h2{margin:0 0 8px;font-size:15px}
+#search{width:100%;border:1px solid var(--line);background:var(--panel2);border-radius:7px;padding:6px 10px}
+#tabs{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.tab{border:1px solid var(--line);background:transparent;border-radius:999px;padding:2px 10px;font-size:13px}
+.tab.on{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+#items{overflow-y:auto;padding:8px;flex:1 1 55%}
+.item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--line);background:var(--panel2);border-radius:6px;padding:7px 10px 7px 0;margin-bottom:6px;overflow:hidden}
+.item::before{content:"";align-self:stretch;width:8px;background:var(--cc,var(--c-ext));margin:-7px 2px -7px 0}
+.item:hover{border-color:var(--muted)}
+.item.on{outline:2px solid var(--hivis);outline-offset:-1px}
+.item b{font-weight:500}.item small{color:var(--muted);margin-left:auto;font-size:12px}
+.sl{border-top:1px solid var(--line);padding:8px 12px 4px;font-size:13px;color:var(--muted);display:flex;justify-content:space-between}
+#sceneList{overflow-y:auto;padding:0 8px 8px;flex:1 1 45%}
+.srow{display:flex;gap:8px;align-items:center;width:100%;border:0;background:transparent;text-align:left;padding:4px 6px;border-radius:5px;font-size:13px}
+.srow:hover{background:var(--panel2)}.srow.on{background:var(--hivis);color:var(--hivis-ink)}
+.srow i{width:6px;height:14px;border-radius:2px;background:var(--cc)}
+.srow span:last-child{margin-left:auto;color:inherit;opacity:.65}
+
+#inspector{position:absolute;right:12px;top:64px;width:270px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:12px;z-index:11;display:none}
+#inspector.show{display:block}
+#inspector label{font-size:12px;color:var(--muted)}
+#inName{width:100%;border:1px solid var(--line);background:var(--panel2);border-radius:7px;padding:6px 10px;margin:2px 0 8px}
+#inMeta{font-size:12px;color:var(--muted);margin-bottom:10px}
+.brow{display:flex;gap:6px;flex-wrap:wrap}
+.brow .tbtn{flex:1;padding:6px 6px}
+.danger{color:var(--red)}
+
+#logPanel{position:absolute;right:12px;top:64px;bottom:12px;width:330px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);z-index:12;display:none;flex-direction:column}
+#logPanel.show{display:flex}
+#logPanel header{display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line)}
+#logPanel header h2{margin:0;font-size:15px;flex:1}
+#logList{overflow-y:auto;flex:1;padding:8px 12px;margin:0;list-style:none}
+#logList li{display:flex;gap:10px;padding:5px 0;border-bottom:1px dashed var(--line);font-size:13px}
+#logList li .num{color:var(--muted);font-size:15px;min-width:42px}
+#logList li.inject{color:var(--red);font-weight:500}
+#logList li.sys{color:var(--muted)}
+#logPanel footer{display:flex;gap:6px;padding:10px 12px;border-top:1px solid var(--line)}
+#logPanel footer .tbtn{flex:1}
+#logList .who{font-weight:500;color:var(--muted);margin-right:4px}
+#sessPanel{position:absolute;right:12px;top:64px;bottom:12px;width:320px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);z-index:13;display:none;flex-direction:column}
+#sessPanel.show{display:flex}
+#sessPanel header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+#sessPanel header h2{margin:0;font-size:15px;flex:1}
+#sessPanel .sbody{overflow-y:auto;padding:12px}
+#sessPanel h3{font-size:14px;margin:14px 0 6px}
+#qr{background:#fff;padding:10px;border-radius:8px;width:max-content;margin:0 auto 8px}
+#qr img,#qr canvas{display:block}
+#bigCode{font-size:44px;text-align:center;letter-spacing:.12em;line-height:1}
+#sessUrl{font-size:12px;color:var(--muted);word-break:break-all;text-align:center;margin:6px 0 8px}
+#roster{list-style:none;margin:0;padding:0}
+#roster li{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px}
+#roster li small{color:var(--muted);margin-left:auto}
+.badge{font-size:11px;padding:0 6px;border-radius:4px;background:var(--ink);color:var(--panel)}
+#ownRow select{flex:1;min-width:0}
+.jf{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:12px}
+.jf input,.jf select{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:9px 10px}
+.note{color:var(--muted);font-size:13px;margin-top:14px}
+#tagMine{display:none}
+#floorNav{position:absolute;right:12px;bottom:44px;z-index:9;display:none;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:hidden}
+#floorNav.show{display:flex}
+#floorNav button{border:0;border-bottom:1px solid var(--line);background:transparent;padding:8px 16px;font-family:"Barlow Condensed","Noto Sans TC",sans-serif;font-weight:600;font-size:16px}
+#floorNav button:last-child{border-bottom:0}
+#floorNav button.on{background:var(--hivis);color:var(--hivis-ink)}
+@media (max-width:760px){#floorNav{bottom:auto;top:64px;right:8px}}
+
+#mselPanel{position:absolute;right:12px;top:64px;bottom:12px;width:360px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);z-index:12;display:none;flex-direction:column}
+#mselPanel.show{display:flex}
+#mselPanel header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+#mselPanel header h2{margin:0;font-size:15px}
+#mselNext{flex:1;color:var(--red);font-size:17px;text-align:right}
+#mselList{list-style:none;margin:0;padding:6px 12px 12px;overflow-y:auto;flex:1}
+#mselList li{display:grid;grid-template-columns:46px 1fr;gap:2px 10px;padding:8px 0 8px 8px;border-bottom:1px dashed var(--line);border-left:4px solid transparent;font-size:13px}
+#mselList li .num{font-size:17px;color:var(--muted)}
+#mselList li .act{grid-column:2;display:flex;gap:6px;align-items:center;color:var(--muted);font-size:12px}
+#mselList li .act .tbtn{padding:2px 10px;font-size:12px}
+#mselList li.next{border-left-color:var(--hivis);background:var(--panel2)}
+#mselList li.next .num{color:var(--ink)}
+#mselList li.done{opacity:.5}
+#mselList li.skip .tx{text-decoration:line-through;color:var(--muted)}
+.chip.done{opacity:.45}
+#banner{position:absolute;left:50%;top:66px;transform:translate(-50%,-8px);opacity:0;pointer-events:none;z-index:15;background:var(--red);color:#fff;border-radius:10px;padding:10px 18px;box-shadow:var(--shadow);max-width:min(560px,90vw);transition:opacity .25s,transform .25s}
+#banner.show{opacity:1;transform:translate(-50%,0)}
+#banner small{display:block;opacity:.85;font-size:12px}
+#banner strong{font-size:17px;font-weight:700}
+
+#hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font-size:12px;color:#eef2f5;background:rgba(18,24,31,.7);padding:4px 12px;border-radius:999px;pointer-events:none;white-space:nowrap;z-index:5}
+#placeTip{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);background:var(--hivis);color:var(--hivis-ink);padding:6px 14px;border-radius:999px;font-weight:500;z-index:6;display:none;white-space:nowrap}
+#placeTip.show{display:block}
+#palBtn{display:none}
+
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);padding:16px;width:min(460px,92vw);box-shadow:var(--shadow)}
+dialog::backdrop{background:rgba(10,15,20,.45)}
+dialog h2{margin:0 0 10px;font-size:16px}
+#injText{width:100%;min-height:80px;border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:8px 10px;resize:vertical}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.chip{border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:3px 10px;font-size:13px}
+.drow{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+
+/* 開始畫面 */
+#start{position:absolute;inset:0;z-index:40;background:var(--bg);overflow-y:auto;display:flex;align-items:center;justify-content:center;padding:24px}
+#start.hide{display:none}
+.sbox{width:min(760px,100%)}
+.sbox h1{font-size:clamp(28px,5vw,44px);line-height:1.15;margin:0 0 8px;display:flex;align-items:center;gap:14px}
+.sbox h1 i{display:inline-block;width:14px;height:1em;background:var(--red);border-radius:3px}
+.sbox p.lead{color:var(--muted);margin:0 0 24px;max-width:56ch}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:22px}
+.scard{text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:14px;border-top:6px solid var(--c-ext)}
+.scard b{display:block;font-size:16px;margin-bottom:4px}
+.scard span{color:var(--muted);font-size:13px}
+.scard.on{outline:3px solid var(--hivis);outline-offset:-1px}
+.srole{display:flex;gap:6px;align-items:center;margin-bottom:22px;flex-wrap:wrap}
+.srole>span{color:var(--muted);margin-right:6px}
+.go{display:flex;gap:10px;flex-wrap:wrap}
+.go .tbtn{padding:10px 22px;font-size:15px}
+#hostBtn{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+
+@media (max-width:760px){
+  #brand span,#scenName,#hint,.hide-m{display:none}
+  #topbar{gap:6px;padding:0 8px;overflow-x:auto;scrollbar-width:none}
+  #topbar::-webkit-scrollbar{display:none}
+  #topbar>*{flex-shrink:0}
+  .tbtn{padding:6px 9px}
+  #palBtn{display:inline-block}
+  #palette{left:0;right:0;top:auto;bottom:0;width:auto;height:58vh;border-radius:14px 14px 0 0;transform:translateY(105%);transition:transform .25s;padding-bottom:env(safe-area-inset-bottom,0px)}
+  #palette.open{transform:none}
+  #inspector{left:8px;right:8px;top:auto;bottom:12px;width:auto}
+  #logPanel{left:0;right:0;width:auto;top:60px;bottom:0;border-radius:14px 14px 0 0}
+  #banner{top:60px}
+  #mselPanel,#sessPanel{left:0;right:0;width:auto;top:60px;bottom:0;border-radius:14px 14px 0 0}
+}
+@media (prefers-reduced-motion:reduce){#palette,#banner{transition:none}}
+/* ---- 登入／跑馬燈／教官提示／意見回饋 ---- */
+#login{position:absolute;inset:0;z-index:60;background:var(--bg);display:flex;flex-direction:column;overflow-y:auto}
+#login.hide{display:none}
+#marq{flex:none;background:var(--ink);color:var(--panel);overflow:hidden;white-space:nowrap;padding:9px 0}
+#marq[hidden]{display:none}
+#marq .mtrack{display:inline-block;padding-left:100%;animation:mq var(--mqs,30s) linear infinite}
+#marq:hover .mtrack{animation-play-state:paused}
+@keyframes mq{to{transform:translateX(-100%)}}
+@media (prefers-reduced-motion:reduce){#marq{white-space:normal;padding:9px 12px}#marq .mtrack{animation:none;padding-left:0}}
+.lbox{margin:auto;width:min(400px,100%);padding:24px}
+.lbox form{display:flex;flex-direction:column;gap:10px}
+.lbox input,#fbDlg select,#fbDlg textarea{width:100%;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:9px 12px;font:inherit}
+.lbox .tbtn{padding:10px 12px}
+#lMsg{min-height:1.4em;color:var(--red)}
+#userDlg .ubtns,#fbDlg .ubtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+#fbDlg label{display:block;margin:10px 0 4px;color:var(--muted);font-size:13px}
+#fbDlg textarea{min-height:90px;resize:vertical}
+#tipPanel{position:absolute;right:12px;top:64px;bottom:12px;width:360px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);z-index:12;display:none;flex-direction:column}
+#tipPanel.show{display:flex}
+#tipPanel header{display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line)}
+#tipPanel header h2{margin:0;font-size:15px;flex:1}
+#tipPanel .tbody{overflow-y:auto;padding:8px 12px 14px;font-size:14px}
+#tipPanel details{border-bottom:1px solid var(--line);padding:8px 0}
+#tipPanel summary{font-weight:700;cursor:pointer}
+#tipPanel ul{margin:6px 0 0;padding-left:20px;color:var(--ink)}
+#tipPanel li{margin:3px 0}
+#tipPanel .q{color:var(--muted)}
+@media (max-width:720px){#tipPanel{left:0;right:0;width:auto;top:60px;bottom:0;border-radius:14px 14px 0 0}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div id="brand"><i></i><span>ICS 3D 指揮演練</span></div>
+    <div id="scenName"></div>
+    <button type="button" class="tbtn" id="sessBtn" style="display:none">場次 <span class="num" id="sessCode"></span></button>
+    <div class="spacer"></div>
+    <button type="button" class="tbtn" id="palBtn">物件</button>
+    <div id="clock"><span id="clockTime" class="num">00:00</span><button type="button" id="clockBtn" aria-label="開始計時">▶</button></div>
+    <button type="button" class="tbtn" id="injectBtn">狀況注入</button>
+    <button type="button" class="tbtn" id="mselBtn">腳本</button>
+    <button type="button" class="tbtn" id="logBtn">紀錄</button>
+    <button type="button" class="tbtn hide-m on" id="labelBtn">標籤</button>
+    <button type="button" class="tbtn" id="tipBtn" style="display:none">教官提示</button>
+    <button type="button" class="tbtn" id="userBtn" style="display:none"></button>
+    <button type="button" class="tbtn" id="homeBtn">首頁</button>
+  </div>
+
+  <div id="stage"><div id="labels"></div></div>
+
+  <aside id="palette">
+    <div class="ph">
+      <h2>資源與物件</h2>
+      <input id="search" type="search" placeholder="搜尋，例如：水箱車" autocomplete="off">
+      <div id="tabs"></div>
+    </div>
+    <div id="items"></div>
+    <div class="sl"><span>場景中的物件</span><span id="count" class="num">0</span></div>
+    <div id="sceneList"></div>
+  </aside>
+
+  <section id="inspector" aria-label="物件設定">
+    <label for="inName">名稱（例如車號、人員編組）</label>
+    <input id="inName" autocomplete="off">
+    <div id="inMeta"></div>
+    <div id="ownRow" class="fxrow" style="display:none"><label for="inOwner">指派給</label><select id="inOwner"></select></div>
+    <div id="inStatus" class="fxrow" style="display:none"><span style="color:var(--red);font-weight:700"></span><button type="button" class="tbtn" id="clrStatus">清除狀態</button></div>
+    <div class="brow">
+      <button type="button" class="tbtn" id="rotL">左轉 15°</button>
+      <button type="button" class="tbtn" id="rotR">右轉 15°</button>
+    </div>
+    <div class="brow" style="margin-top:6px">
+      <button type="button" class="tbtn" id="focusBtn">鏡頭移過去</button>
+      <button type="button" class="tbtn" id="upBtn" style="display:none">上樓</button>
+      <button type="button" class="tbtn" id="dnBtn" style="display:none">下樓</button>
+      <button type="button" class="tbtn danger" id="delBtn">刪除</button>
+    </div>
+  </section>
+
+  <section id="logPanel" aria-label="演練紀錄">
+    <header><h2>演練紀錄</h2><button type="button" class="tbtn" id="logClose">關閉</button></header>
+    <ul id="logList"></ul>
+    <footer>
+      <button type="button" class="tbtn" id="copyLog">複製紀錄</button>
+      <button type="button" class="tbtn" id="saveBtn">儲存場景</button>
+    </footer>
+  </section>
+
+  <section id="mselPanel" aria-label="演練腳本">
+    <header><h2>演練腳本</h2><span id="mselNext" class="num"></span><button type="button" class="tbtn" id="mselClose">關閉</button></header>
+    <div class="fxrow" style="padding:8px 12px 0;margin:0"><label><input type="checkbox" id="mselAuto" checked> 依時間自動發布</label><label><input type="checkbox" id="mselCam" checked> 鏡頭跟隨</label>
+      <label>倍速 <select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option></select></label></div>
+    <ol id="mselList"></ol>
+  </section>
+
+  <section id="sessPanel" aria-label="連線場次">
+    <header><h2>連線場次</h2><button type="button" class="tbtn" id="sessClose">關閉</button></header>
+    <div class="sbody">
+      <div id="bigCode" class="num"></div>
+      <div id="qr"></div>
+      <div id="sessUrl"></div>
+      <div class="brow"><button type="button" class="tbtn" id="copyUrl">複製加入連結</button></div>
+      <div class="fxrow" style="margin-top:10px"><label><input type="checkbox" id="followCam" checked> 狀況注入時鏡頭跟隨</label></div>
+      <h3>在線人員 <span class="num" id="pCount"></span></h3>
+      <ul id="roster"></ul>
+      <div class="brow" style="margin-top:14px">
+        <button type="button" class="tbtn" id="leaveBtn">離開場次</button>
+        <button type="button" class="tbtn danger" id="endSess">結束並刪除場次</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="banner" role="status" aria-live="polite"><small></small><strong></strong></div>
+
+  <section id="tipPanel" aria-label="教官提示">
+    <header><h2>教官提示卡</h2><button type="button" class="tbtn" id="tipClose">關閉</button></header>
+    <div class="tbody">
+      <p class="q">本演練重點：①運用 ICS／NIMS 指揮架構　②設定事故目標，且每個目標都有組別負責。</p>
+      <details open><summary>一、開場（0–5 分鐘）</summary><ul>
+        <li>請 IC 宣告：「我是本案指揮官，指揮所設在○○」。</li>
+        <li>請 IC 先做現場安全評估，說出優先順序：<b>人命安全 → 事故穩定 → 財產保護</b>。</li>
+        <li>確認學員各自的 ICS 職位（例：作業組、搜救、射水、救護、安全官）。</li></ul></details>
+      <details><summary>二、架構檢核（隨時可問）</summary><ul>
+        <li>指揮鏈清楚嗎？每個人只向「一位」上級報告？</li>
+        <li>有沒有指派安全官？誰負責聯絡與外部單位？</li>
+        <li>控制幅度：一位指揮者直接管幾個單位？（建議 3–7 個，最理想 5 個）</li>
+        <li>資源還在「待命區」嗎？誰負責管理待命區與資源登記？</li>
+        <li>需要擴編時，IC 是否把職責「往下授權」，而不是自己全包？</li></ul></details>
+      <details><summary>三、目標檢核（重點）</summary><ul>
+        <li>請 IC 口頭宣告 2–4 個事故目標，並在紀錄寫下。</li>
+        <li>每個目標是否 <b>具體、可衡量、有時限</b>？（例：「15 分鐘內完成二樓搜救」）</li>
+        <li class="q">逐一提問：「這個目標是哪一組負責？」答不出來＝尚未分配。</li>
+        <li>有沒有「無人負責」或「兩組重複負責」的目標？</li>
+        <li>目標是否涵蓋人命安全？若全是財產保護，請追問。</li>
+        <li>新狀況注入後，目標是否隨之調整並重新分配？</li></ul></details>
+      <details><summary>四、注入狀況的提問時機</summary><ul>
+        <li>發現受困者：「搜救目標由誰接手？需要增援嗎？」</li>
+        <li>樓板塌陷、火勢擴大：「安全官怎麼回報？人員是否撤出？」</li>
+        <li>資源不足：「向誰請求增援？指揮架構要不要擴編？」</li>
+        <li>多件事同時發生：「優先順序是什麼？為什麼？」</li></ul></details>
+      <details><summary>五、結束與檢討（AAR）</summary><ul>
+        <li>回放「演練紀錄」：每個目標何時提出、何時指派、誰完成？</li>
+        <li>做得好的 2 件事、可改進的 2 件事、下次要練的 1 件事。</li>
+        <li>提醒學員登入後可從右上角姓名處填寫「意見回饋」。</li></ul></details>
+    </div>
+  </section>
+
+  <div id="login">
+    <div id="marq" hidden><div class="mtrack"><span></span></div></div>
+    <div class="sbox lbox">
+      <h1><i></i>ICS 3D 指揮演練</h1>
+      <p class="lead">請使用教官發給您的帳號登入。</p>
+      <form id="loginForm">
+        <input id="lUser" autocomplete="username" placeholder="帳號" autocapitalize="off" spellcheck="false">
+        <input id="lPass" type="password" autocomplete="current-password" placeholder="密碼">
+        <button type="submit" class="tbtn" id="lBtn" style="background:var(--ink);color:var(--panel);border-color:var(--ink)">登入</button>
+      </form>
+      <p class="note" id="lMsg" role="alert"></p>
+      <button type="button" class="tbtn" id="lDemo" hidden>單機試用（未連接登入服務）</button>
+    </div>
+  </div>
+
+  <dialog id="userDlg">
+    <h2 tabindex="-1" autofocus id="uTitle"></h2>
+    <p class="note" id="uInfo"></p>
+    <div class="ubtns">
+      <button type="button" class="tbtn" id="uViewIns">切換為教官視角</button>
+      <button type="button" class="tbtn" id="uViewTr">切換為學員視角</button>
+      <button type="button" class="tbtn" id="uFb">意見回饋</button>
+      <button type="button" class="tbtn danger" id="uOut">登出</button>
+      <button type="button" class="tbtn" id="uClose">關閉</button>
+    </div>
+  </dialog>
+
+  <dialog id="fbDlg">
+    <h2 tabindex="-1" autofocus>意見回饋</h2>
+    <label for="fb1">學習收穫（1 最低、5 最高）</label><select id="fb1"><option value="">請選擇</option><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select>
+    <label for="fb2">操作是否容易</label><select id="fb2"><option value="">請選擇</option><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select>
+    <label for="fb3">演練是否貼近實務</label><select id="fb3"><option value="">請選擇</option><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select>
+    <label for="fbText">其他意見或建議（選填，最多 1000 字）</label><textarea id="fbText" maxlength="1000"></textarea>
+    <div class="ubtns"><button type="button" class="tbtn" id="fbCancel">取消</button><button type="button" class="tbtn" id="fbSend" style="background:var(--red);color:#fff;border-color:var(--red)">送出</button></div>
+  </dialog>
+  <div id="placeTip"></div>
+  <div id="floorNav" aria-label="樓層檢視"><button type="button" data-f="ext" class="on">外觀</button><button type="button" data-f="3">4F</button><button type="button" data-f="2">3F</button><button type="button" data-f="1">2F</button><button type="button" data-f="0">1F</button></div>
+  <div id="hint">拖曳旋轉視角　先點選物件再拖曳可移動　WASD 移動　右鍵平移　R 旋轉　Del 刪除</div>
+
+  <dialog id="injDlg">
+    <h2 tabindex="-1" autofocus>狀況注入</h2>
+    <textarea id="injText" placeholder="輸入要發布給學員的狀況"></textarea>
+    <div class="chips" id="injChips"></div>
+    <div class="fxrow"><label for="injFx">場景變化</label><select id="injFx"><option value="none">無</option><option value="preset">依所選預設狀況</option><option value="fireUp">火勢擴大</option><option value="smoke">濃煙擴散</option><option value="victim">新增傷患</option><option value="reinforce">增援車輛抵達</option><option value="wind">風向改變 45°</option></select><label><input type="checkbox" id="injCam" checked> 鏡頭帶到事件位置</label></div>
+    <div class="drow">
+      <button type="button" class="tbtn" id="injCancel">取消</button>
+      <button type="button" class="tbtn" id="injSend" style="background:var(--red);color:#fff;border-color:var(--red)">發布狀況</button>
+    </div>
+  </dialog>
+
+  <div id="start">
+    <div class="sbox">
+      <h1><i></i>ICS 3D 指揮演練</h1>
+      <p class="lead">主控者選擇情境、擺放資源並注入狀況；學員依 ICS 職位調度車輛與人員。所有動作都會依演練時間記錄，結束後可複製做 AAR。</p>
+      <div class="sgrid" id="scenGrid"></div>
+      <div class="srole"><span>身分</span>
+        <button type="button" class="tab on" data-role="ctrl">教官（主控）</button>
+        <button type="button" class="tab" data-role="trainee">學員</button>
+      </div>
+      <div id="ctrlBox">
+        <div class="jf"><input id="hName" placeholder="教官姓名" autocomplete="name"></div>
+        <div class="go">
+          <button type="button" class="tbtn" id="hostBtn">建立連線場次</button>
+          <button type="button" class="tbtn" id="goBtn">單機演練</button>
+          <button type="button" class="tbtn" id="resumeBtn" style="display:none">載入上次儲存</button>
+        </div>
+        <div class="go" style="margin-top:10px">
+          <input id="rejoinCode" class="tbtn" placeholder="房號" inputmode="numeric" maxlength="4" style="width:90px">
+          <button type="button" class="tbtn" id="rejoinBtn">回到我建立的場次</button>
+        </div>
+      </div>
+      <div id="joinBox" hidden>
+        <div class="jf">
+          <input id="jCode" placeholder="房號（4 碼）" inputmode="numeric" maxlength="4">
+          <input id="jName" placeholder="姓名" autocomplete="name">
+          <select id="jPos"><option>指揮官</option><option>作業組長</option><option>搜救小組長</option><option>射水小組長</option><option>救護組長</option><option>安全官</option><option>計畫組長</option><option>後勤組長</option><option>聯絡官</option><option>其他</option></select>
+        </div>
+        <div class="go">
+          <button type="button" class="tbtn" id="joinBtn" style="background:var(--ink);color:var(--panel);border-color:var(--ink)">加入場次</button>
+          <button type="button" class="tbtn" id="soloBtn">單機練習</button>
+        </div>
+        <p class="note">加入連線場次時，情境由教官決定。</p>
+      </div>
+      <p class="note" id="netNote"></p>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+/* ===== 把 Firebase 專案設定貼在這裡（Firebase 主控台 → 專案設定 → 你的應用程式 → SDK 設定） ===== */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCU4GR0o04qqsVBHL6FmgDrMc_LmYLguSc",
+  authDomain: "ics-3d-drill.firebaseapp.com",
+  databaseURL: "https://ics-3d-drill-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ics-3d-drill",
+  storageBucket: "ics-3d-drill.firebasestorage.app",
+  messagingSenderId: "848506422461",
+  appId: "1:848506422461:web:bec6def871ab479898a3d4"
+};
+</script>
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const stageEl=$('#stage'), labelsEl=$('#labels');
+
+/* ---------- three 基本設定 ---------- */
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+stageEl.insertBefore(renderer.domElement,labelsEl);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0xb3c1cd);
+scene.fog=new THREE.Fog(0xb3c1cd,140,360);
+const camera=new THREE.PerspectiveCamera(50,1,0.5,1200);
+const controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.maxPolarAngle=Math.PI*0.48;controls.minDistance=5;controls.maxDistance=240;
+scene.add(new THREE.HemisphereLight(0xe3ebf2,0x4a5240,0.8));
+const sun=new THREE.DirectionalLight(0xffffff,0.85);
+sun.position.set(45,80,30);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-80,right:80,top:80,bottom:-80,far:220});
+scene.add(sun);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(800,800),new THREE.MeshStandardMaterial({color:0x6c7a59,roughness:1}));
+ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+const envGroup=new THREE.Group();scene.add(envGroup);
+
+/* ---------- 幾何小工具 ---------- */
+const mat=(c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.7,metalness:.08},o));
+function box(w,h,d,c,x=0,y=0,z=0){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),c&&c.isMaterial?c:mat(c));m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;return m}
+function cyl(rt,rb,h,c,x=0,y=0,z=0,seg=18){const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),c&&c.isMaterial?c:mat(c));m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;return m}
+function flat(geo,c,y=.03,op=.5){const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:op,depthWrite:false,side:THREE.DoubleSide}));m.rotation.x=-Math.PI/2;m.position.y=y;return m}
+function textTex(text,bg,fg,w=256,h=128,size=60){const cv=document.createElement('canvas');cv.width=w;cv.height=h;const x=cv.getContext('2d');
+  if(bg){x.fillStyle=bg;x.fillRect(0,0,w,h)}x.fillStyle=fg;x.font=`700 ${size}px "Noto Sans TC",sans-serif`;x.textAlign='center';x.textBaseline='middle';x.fillText(text,w/2,h/2);
+  const t=new THREE.CanvasTexture(cv);t.anisotropy=4;return t}
+const winCache={};
+function windowTex(wall){if(winCache[wall])return winCache[wall];const cv=document.createElement('canvas');cv.width=128;cv.height=256;const x=cv.getContext('2d');
+  x.fillStyle=wall;x.fillRect(0,0,128,256);
+  for(let f=0;f<4;f++){x.fillStyle='#3d4d5c';x.fillRect(18,18+f*62,92,30);x.fillStyle='#8a8f94';x.fillRect(12,52+f*62,104,4)}
+  x.fillStyle='#6b6f74';x.fillRect(20,226,88,30);
+  const t=new THREE.CanvasTexture(cv);winCache[wall]=t;return t}
+
+const C={red:0xc8102e,white:0xf1f1ee,ref:0xd6e548,glass:0x2a3a4a,tire:0x1b1b1b,turnout:0xa88638};
+function wheels(g,w,xs,r=.5,y=.5){xs.forEach(x=>[-1,1].forEach(s=>{const m=cyl(r,r,.36,C.tire,x,y,s*(w/2-.05));m.rotation.x=Math.PI/2;g.add(m)}))}
+function lightbar(g,x,y,w){g.add(box(.4,.18,w*.34,mat(0xff2a2a,{emissive:0xff2020,emissiveIntensity:.7}),x,y,-w*.18));g.add(box(.4,.18,w*.34,mat(0x2a5cff,{emissive:0x2050ff,emissiveIntensity:.7}),x,y,w*.18))}
+function truck(o){const {len=8,w=2.5,h=2.8,color=C.red,cab=color,stripe=C.ref,bar=true,body=true}=o;const g=new THREE.Group();const cl=2.3,clr=.55;
+  if(body)g.add(box(len-cl,h,w,color,-cl/2,h/2+clr,0));
+  g.add(box(cl,h*.82,w,cab,len/2-cl/2,h*.41+clr,0));
+  g.add(box(.06,h*.3,w*.86,C.glass,len/2+.01,clr+h*.58,0));
+  if(stripe!=null)g.add(box(len*.98,.2,w+.04,stripe,0,clr+.5,0));
+  if(bar)lightbar(g,len/2-cl/2,clr+h*.82+.09,w);
+  wheels(g,w,len>8.6?[-len/2+1.2,-len/2+2.3,len/2-1.2]:[-len/2+1.3,len/2-1.2]);return g}
+function sedan(color){const g=new THREE.Group();g.add(box(4.4,.75,1.9,color,0,.72,0));g.add(box(2.3,.6,1.72,color,-.25,1.38,0));
+  g.add(box(.05,.45,1.55,C.glass,.92,1.36,0));wheels(g,1.9,[-1.35,1.35],.36,.36);return g}
+function person(suit,helmet,o={}){const g=new THREE.Group();
+  g.add(box(.42,.82,.28,o.legs||suit,0,.41,0));g.add(box(.52,.68,.32,suit,0,1.16,0));
+  if(o.vest)g.add(box(.56,.42,.35,o.vest,0,1.2,0));
+  if(o.band)g.add(box(.55,.08,.35,C.ref,0,.95,0));
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.16,16,12),mat(0xd8b089));head.position.y=1.66;head.castShadow=true;g.add(head);
+  if(helmet!=null){const hm=new THREE.Mesh(new THREE.SphereGeometry(.21,16,10,0,Math.PI*2,0,Math.PI/2),mat(helmet));hm.position.y=1.7;hm.castShadow=true;g.add(hm)}
+  g.scale.setScalar(1.25);
+  if(o.lying){const w=new THREE.Group();g.rotation.z=-Math.PI/2;g.position.set(-1,.33,0);w.add(g);return w}
+  return g}
+const HB={x:0,z:-15,W:6.6,D:14,H:3.2,F:4};
+const LV=f=>f*HB.H+.2;
+const inBld=(x,z)=>!!S.bld&&Math.abs(x-HB.x)<HB.W/2-.15&&Math.abs(z-HB.z)<HB.D/2-.15;
+function wallSeg(len,h,t,m,ops){const g=new THREE.Group();const xs=new Set([-len/2,len/2]);ops.forEach(o=>{xs.add(o.a);xs.add(o.b)});const arr=[...xs].sort((a,b)=>a-b);
+  for(let i=0;i<arr.length-1;i++){const a=arr[i],b=arr[i+1],w=b-a;if(w<.01)continue;const mx=(a+b)/2,op=ops.find(o=>o.a<=a+1e-6&&o.b>=b-1e-6);
+    if(!op){g.add(box(w,h,t,m,mx,h/2,0));continue}
+    if(op.y0>0)g.add(box(w,op.y0,t,m,mx,op.y0/2,0));if(op.y1<h)g.add(box(w,h-op.y1,t,m,mx,(h+op.y1)/2,0));
+    if(op.glass){const gl=new THREE.Mesh(new THREE.PlaneGeometry(w,op.y1-op.y0),new THREE.MeshStandardMaterial({color:0x8fb3c9,transparent:true,opacity:.3,side:THREE.DoubleSide,depthWrite:false}));gl.position.set(mx,(op.y0+op.y1)/2,0);g.add(gl)}}
+  return g}
+function floorText(t,x,z,size=2.4){const m=new THREE.Mesh(new THREE.PlaneGeometry(size,size/2),new THREE.MeshBasicMaterial({map:textTex(t,null,'#4a4a4a',256,128,44),transparent:true,depthWrite:false}));m.rotation.x=-Math.PI/2;m.position.set(x,.22,z);return m}
+function interiorHouse(){const {W,D,H,F}=HB,h=H-.2,wt=.2,it=.12;const root=new THREE.Group();const floors=[];
+  const M={ext:mat(0xcbbd9f),inn:mat(0xece6d8),stair:mat(0x8a8f94),wood:mat(0x7b6a55),bed:mat(0xd9d3c7),red:mat(0x8e2f25),white:mat(0xe9e9e6),tile:[mat(0x9c8f7a),mat(0xb3a58c),mat(0xa8a39a),mat(0x9a8c7c)]};
+  const sx0=W/2-1.15,sx1=W/2-.1,sz0=-1.2,sz1=2.4;
+  const names=[['客廳／車庫','孝親房','廚房'],['主臥室','臥室','浴室'],['臥室','書房','臥室'],['神明廳','儲藏室','洗衣間']];
+  const partX=(z,x0,x1,doors)=>{const L=x1-x0,cx=(x0+x1)/2;const w=wallSeg(L,h,it,M.inn,doors.map(([a,b])=>({a:a-cx,b:b-cx,y0:0,y1:2.1})));w.position.set(cx,.2,z);return w};
+  const partZ=(x,z0,z1)=>{const w=wallSeg(z1-z0,h,it,M.inn,[]);w.rotation.y=Math.PI/2;w.position.set(x,.2,(z0+z1)/2);return w};
+  for(let f=0;f<F;f++){const g=new THREE.Group();g.position.y=f*H;const T=M.tile[f];
+    if(f===0)g.add(box(W,.2,D,T,0,.1,0));
+    else{g.add(box(sx0+W/2,.2,D,T,(-W/2+sx0)/2,.1,0));const rw=W/2-sx0,rx=(sx0+W/2)/2;g.add(box(rw,.2,sz0+D/2,T,rx,.1,(-D/2+sz0)/2));g.add(box(rw,.2,D/2-sz1,T,rx,.1,(sz1+D/2)/2))}
+    const back=wallSeg(W,h,wt,M.ext,[{a:-1.4,b:.2,y0:1,y1:2.1,glass:true}]);back.position.set(0,.2,-D/2+wt/2);g.add(back);
+    for(const sd of[-1,1]){const sw=wallSeg(D,h,wt,M.ext,[]);sw.rotation.y=Math.PI/2;sw.position.set(sd*(W/2-wt/2),.2,0);g.add(sw)}
+    const fo=f===0?[{a:-W/2+.4,b:.9,y0:0,y1:2.5},{a:1.4,b:2.4,y0:0,y1:2.1}]:[{a:-2.4,b:1.8,y0:.9,y1:2.3,glass:true}];
+    const front=wallSeg(W,h,wt,M.ext,fo);front.position.set(0,.2,D/2-wt/2);g.add(front);
+    g.add(partX(1.2,-W/2,sx0,[[-1.3,-.4]]));
+    g.add(partX(-2.5,-W/2,W/2,[[-2.3,-1.5],[1.1,1.9]]));
+    g.add(partZ(.4,-D/2,-2.5));
+    if(f<F-1){const n=14,rise=H/n,run=(sz1-sz0)/n;for(let i=0;i<n;i++)g.add(box(sx1-sx0,(i+1)*rise,run,M.stair,(sx0+sx1)/2,(i+1)*rise/2,sz0+run*(i+.5)))}
+    else g.add(box(sx1-sx0,.9,sz1-sz0,M.stair,(sx0+sx1)/2,.45,(sz0+sz1)/2));
+    if(f>0)g.add(box(.05,1,sz1-sz0,M.wood,sx0-.03,.7,(sz0+sz1)/2));
+    const nm=names[f];g.add(floorText(nm[0],-.8,4.3));g.add(floorText(nm[1],-1.6,-4.9,2));g.add(floorText(nm[2],1.9,-4.9,2));g.add(floorText('樓梯間',-1.2,-.6,2));g.add(floorText(`${f+1}F`,-2.4,6.2,1.4));
+    if(f===0){g.add(box(2.2,.8,.9,M.wood,-1.2,.6,2.1));g.add(box(1.8,.5,1,M.bed,-1.8,.45,-5.6));g.add(box(.6,.9,3,M.white,2.9,.65,-4.8))}
+    if(f===1){g.add(box(2,.55,2.2,M.bed,-1.2,.48,4.9));g.add(box(1.8,.5,1,M.bed,-1.8,.45,-5.6));g.add(box(.8,.6,1.7,M.white,2.6,.5,-5.8))}
+    if(f===2){g.add(box(1.8,.5,1,M.bed,-1.4,.45,5.2));g.add(box(1.6,.75,.7,M.wood,-1.8,.58,-6.4));g.add(box(1.8,.5,1,M.bed,2.2,.45,-5.6))}
+    if(f===3){g.add(box(2.4,1.1,.7,M.red,-.6,.75,1.7));g.add(box(.5,1.8,2.4,M.wood,-2.9,1.1,-4.8))}
+    root.add(g);floors.push(g)}
+  const roof=new THREE.Group();roof.position.y=F*H;roof.add(box(W,.2,D,mat(0x8d8f8c),0,.1,0));
+  for(const sd of[-1,1]){roof.add(box(W,1,.15,M.ext,0,.6,sd*(D/2-.08)));roof.add(box(.15,1,D,M.ext,sd*(W/2-.08),.6,0))}
+  roof.add(box(1.6,2.4,4,M.ext,(sx0+sx1)/2-.2,1.3,(sz0+sz1)/2));root.add(roof);
+  root.userData.floors=floors;root.userData.roof=roof;return root}
+function house(w,h,d,wall){const t=windowTex(wall);t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping;const side=mat(0xffffff,{map:t}),roof=mat(0x8d8f8c);
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),[mat(wall),mat(wall),roof,roof,side,side]);m.position.y=h/2;m.castShadow=m.receiveShadow=true;return m}
+function tanker(over){const g=new THREE.Group();
+  const tank=cyl(1.2,1.2,9.2,0xdfe3e6,-1.6,2.0,0,24);tank.rotation.z=Math.PI/2;g.add(tank);
+  for(const x of[-5.2,2.0])g.add(box(.3,.5,2.2,0x8c9196,x,.9,0));
+  g.add(box(2.6,2.7,2.45,0x1f5fa8,4.6,1.9,0));g.add(box(.06,.9,2.1,C.glass,5.92,2.5,0));
+  g.add(box(9.4,.25,.05,0xff7f00,-1.6,2.0,1.22));
+  const pl=new THREE.Mesh(new THREE.PlaneGeometry(.9,.6),new THREE.MeshBasicMaterial({map:textTex('33 / 1203','#ff8c00','#111',256,170,48)}));pl.position.set(-1.6,2.0,1.23);g.add(pl);
+  wheels(g,2.45,[-5.4,-4.3,3.6,5.2]);
+  if(!over)return g;const w=new THREE.Group();g.rotation.x=Math.PI/2;g.position.set(0,1.25,-1.9);w.add(g);return w}
+
+/* ---------- 物件目錄（指揮板磁鐵） ---------- */
+const CATS=[['all','全部'],['veh','車輛'],['ppl','人員'],['res','應變'],['env','環境'],['ext','其他']];
+const CAT_COLOR={veh:'var(--c-veh)',ppl:'var(--c-ppl)',res:'var(--c-res)',env:'var(--c-env)',ext:'var(--c-ext)'};
+const CATALOG={
+  engine:{cat:'veh',name:'水箱車',build(){const g=truck({len:8});g.add(box(5.4,.15,2,0x9aa0a6,-1.15,3.45,0));return g}},
+  tender:{cat:'veh',name:'水庫車',build(){const g=truck({len:9.4,body:false});const t=cyl(1.15,1.15,6.6,C.red,-1.3,1.75,0,24);t.rotation.z=Math.PI/2;g.add(t);g.add(box(9,.18,2.55,C.ref,0,1.05,0));return g}},
+  ladder:{cat:'veh',name:'雲梯車',build(){const g=truck({len:11,h:2.4});g.add(cyl(.9,.9,.5,0x9aa0a6,-3.2,3.2,0));
+    const l=new THREE.Group();l.add(box(10,.14,.08,0xc9cdd1,0,0,-.45));l.add(box(10,.14,.08,0xc9cdd1,0,0,.45));for(let i=0;i<14;i++)l.add(box(.06,.06,.9,0xc9cdd1,-4.8+i*.74,0,0));
+    l.position.set(.6,3.6,0);l.rotation.z=.05;g.add(l);return g}},
+  rescue:{cat:'veh',name:'救助器材車',build(){const g=truck({len:8.6,h:3});for(let i=0;i<3;i++)g.add(box(1.7,2.2,.03,0xb5b9bd,-3.2+i*1.9,2.1,1.27));return g}},
+  amb:{cat:'veh',name:'救護車',build(){const g=truck({len:6.2,w:2.2,h:2.6,color:C.white,stripe:0xd21f2a});g.add(box(.9,.3,.04,0xd21f2a,-1.5,2.4,1.12));g.add(box(.3,.9,.04,0xd21f2a,-1.5,2.4,1.12));return g}},
+  cmd:{cat:'veh',name:'指揮車',build(){return truck({len:5,w:2.1,h:1.9})}},
+  police:{cat:'veh',name:'警車',build(){return truck({len:4.8,w:1.95,h:1.5,color:0xf3f3f3,stripe:0x1d4f9c})}},
+  ff:{cat:'ppl',name:'消防員',build:()=>person(C.turnout,C.red,{band:true})},
+  ic:{cat:'ppl',name:'指揮官',build:()=>person(C.turnout,0xf7f7f7,{vest:0xd6e548})},
+  emt:{cat:'ppl',name:'救護人員',build:()=>person(0x274a85,null,{vest:0xf07d00})},
+  victim:{cat:'ppl',name:'傷患',build:()=>person(0x8f3a3a,null,{lying:true,legs:0x333a44})},
+  civ:{cat:'ppl',name:'民眾',build:()=>person(0x3f6fb0,null,{legs:0x2b2f3a})},
+  cp:{cat:'res',name:'指揮站',build(){const g=new THREE.Group();g.add(cyl(.06,.06,4,0xb0b4b8,0,2,0));
+    const f=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1),new THREE.MeshStandardMaterial({map:textTex('ICP','#1d8549','#fff',256,160,90),side:THREE.DoubleSide}));f.position.set(.82,3.45,0);g.add(f);
+    g.add(box(1.8,.08,.9,0xdedede,1.8,.78,0));for(const[x,z]of[[1,-.35],[2.6,-.35],[1,.35],[2.6,.35]])g.add(box(.06,.76,.06,0x777,x,.38,z));return g}},
+  staging:{cat:'res',name:'集結區',build(){const g=new THREE.Group();g.add(flat(new THREE.RingGeometry(5.6,6,48),0x1d8549,.04,.8));
+    const s=new THREE.Mesh(new THREE.PlaneGeometry(5,2.5),new THREE.MeshBasicMaterial({map:textTex('集結區',null,'#1d8549',256,128,64),transparent:true,depthWrite:false}));s.rotation.x=-Math.PI/2;s.position.y=.05;g.add(s);return g},flatPick:true},
+  triage:{cat:'res',name:'檢傷分類區',build(){const g=new THREE.Group();[0xd32f2f,0xf2c230,0x2e9e53,0x222222].forEach((c,i)=>g.add(flat(new THREE.PlaneGeometry(2.6,2.6),c,.04,.9)).children);
+    g.children.forEach((m,i)=>m.position.x=-4.5+i*3);return g},flatPick:true},
+  cone:{cat:'res',name:'交通錐',build(){const g=new THREE.Group();g.add(box(.5,.05,.5,0x222,0,.025,0));g.add(cyl(.03,.24,.75,0xff6a00,0,.4,0));g.add(cyl(.11,.15,.12,0xf5f5f5,0,.5,0));return g}},
+  tape:{cat:'res',name:'警戒線',build(){const g=new THREE.Group();for(const x of[-5,5])g.add(cyl(.05,.05,1.1,0xff6a00,x,.55,0));g.add(box(10,.09,.02,0xf2d000,0,1,0));return g}},
+  hose:{cat:'res',name:'水線（20 公尺）',build(){const pts=[[0,0],[4,2],[9,-1],[14,1],[19,0]].map(([x,z])=>new THREE.Vector3(x-9.5,.1,z));
+    const m=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),60,.09,8),mat(0xe9dcbc));m.castShadow=true;const g=new THREE.Group();g.add(m);return g}},
+  hydrant:{cat:'res',name:'消防栓',build(){const g=new THREE.Group();g.add(cyl(.2,.25,.8,C.red,0,.4,0));const cap=new THREE.Mesh(new THREE.SphereGeometry(.21,14,8,0,Math.PI*2,0,Math.PI/2),mat(C.red));cap.position.y=.8;g.add(cap);
+    const o=cyl(.08,.08,.6,C.red,0,.55,0);o.rotation.x=Math.PI/2;g.add(o);return g}},
+  fire:{cat:'env',name:'火焰',build(){const g=new THREE.Group();const cols=[0xff6a00,0xffa200,0xff3c00];
+    for(let i=0;i<8;i++){const h=1.6+Math.random()*2.4,geo=new THREE.ConeGeometry(.45+Math.random()*.5,h,10);geo.translate(0,h/2,0);
+      const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:cols[i%3],transparent:true,opacity:.85,depthWrite:false}));const a=Math.random()*6.28,r=Math.random()*1.2;m.position.set(Math.cos(a)*r,0,Math.sin(a)*r);m.userData.ph=Math.random()*6;g.add(m)}
+    const L=new THREE.PointLight(0xff7a1a,2,26);L.position.y=2;g.add(L);
+    g.userData.anim=t=>{g.children.forEach(m=>{if(m.isMesh)m.scale.y=.75+.35*Math.sin(t*9+m.userData.ph)});L.intensity=1.6+Math.random()*.8};return g},noShadow:true,h:3.5},
+  smoke:{cat:'env',name:'濃煙',build(){const g=new THREE.Group();const n=10;
+    for(let i=0;i<n;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(1,12,10),new THREE.MeshLambertMaterial({color:0x4f5358,transparent:true,opacity:.5,depthWrite:false}));m.userData.o=i/n;g.add(m)}
+    g.userData.anim=t=>g.children.forEach(m=>{const p=(t*.18+m.userData.o)%1;m.position.set(p*5,2+p*16,Math.sin(m.userData.o*9)*.8);m.scale.setScalar(1+p*4);m.material.opacity=.55*(1-p)});return g},noShadow:true,h:4},
+  spill:{cat:'env',name:'洩漏範圍',build(){const g=new THREE.Group();const m=flat(new THREE.CircleGeometry(6,40),0x6f5d2c,.03,.6);m.scale.set(1.25,.85,1);g.add(m);return g},noShadow:true,flatPick:true,h:.5},
+  zones:{cat:'env',name:'熱區／暖區／冷區',build(){const g=new THREE.Group();g.add(flat(new THREE.RingGeometry(0,9,56),0xd32f2f,.05,.22));g.add(flat(new THREE.RingGeometry(9,18,56),0xf2c230,.06,.2));g.add(flat(new THREE.RingGeometry(18,28,56),0x2e9e53,.07,.18));return g},noShadow:true,flatPick:true,h:1},
+  wind:{cat:'env',name:'風向',build(){const g=new THREE.Group();g.add(cyl(.05,.05,5,0x9aa0a6,0,2.5,0));const s=cyl(.15,.15,6,0x2a7de1,0,5,0);s.rotation.z=Math.PI/2;g.add(s);
+    const hd=new THREE.Mesh(new THREE.ConeGeometry(.55,1.4,16),mat(0x2a7de1));hd.rotation.z=-Math.PI/2;hd.position.set(3.7,5,0);g.add(hd);return g},h:5.5},
+  note:{cat:'ext',name:'文字標記',build(){const g=new THREE.Group();g.add(cyl(.05,.05,2.2,0x777,0,1.1,0));g.add(box(1.6,.9,.06,0xffd400,0,2.4,0));return g}},
+  car:{cat:'ext',name:'自小客車',build:()=>sedan(0x8c939b)},
+  house:{cat:'ext',name:'透天厝',build(){const g=new THREE.Group();g.add(house(5.2,13,12,'#c9b79c'));return g}},
+  tanker:{cat:'ext',name:'化學槽車',build:()=>tanker(false)},
+  tankerOver:{cat:'ext',name:'翻覆槽車',build:()=>tanker(true)},
+  smokeLayer:{cat:'env',name:'室內濃煙層',build(){const g=new THREE.Group();const m=new THREE.Mesh(new THREE.BoxGeometry(HB.W-.5,1.2,HB.D-.5),new THREE.MeshBasicMaterial({color:0x2e3236,transparent:true,opacity:.4,depthWrite:false}));m.position.y=HB.H-.85;g.add(m);return g},noShadow:true,flatPick:true,h:3},
+  tow:{cat:'ext',name:'拖吊車',build(){const g=truck({len:7,w:2.4,h:1.2,color:0xe0a800,stripe:null});const b=box(4,.25,.25,0x444444,-1.4,2.6,0);b.rotation.z=.35;g.add(b);return g}}
+};
+
+/* ---------- 情境 ---------- */
+function road(w,z=0){
+  const r=flat(new THREE.PlaneGeometry(800,w),0x3a3e44,.015,1);r.position.z=z;envGroup.add(r);
+  for(let x=-390;x<390;x+=8){const d=flat(new THREE.PlaneGeometry(4,.18),0xf2f2f2,.02,.9);d.position.set(x,.02,z);envGroup.add(d)}
+  for(const s of[-1,1]){const c=box(800,.18,1.8,0xa7abaf,0,.09,z+s*(w/2+.9));c.castShadow=false;envGroup.add(c)}
+}
+function row(z,face,from,to,sp=10,skip=null){const walls=['#c9b79c','#b8bfc4','#d6cdb8','#a9b4a3','#cfc6bd'];const hs=[10,13,13,10,16];
+  for(let i=from;i<=to;i++){if(i===skip)continue;const k=(i+20)%5;const h=house(6.6,hs[k],14,walls[k]);h.position.x=i*sp;h.position.z=z;h.rotation.y=face;envGroup.add(h)}}
+function tree(x,z){const g=new THREE.Group();g.add(cyl(.18,.25,2,0x5b4630,0,1,0));const c=new THREE.Mesh(new THREE.ConeGeometry(1.6,4,10),mat(0x3f6b3a));c.position.y=3.6;c.castShadow=true;g.add(c);g.position.set(x,0,z);envGroup.add(g)}
+
+/* 成功鎮中華路周邊（OpenStreetMap 開放資料，單位：公尺，x 向東、z 向南，原點約在中華路） */
+const MAP_CG={"roads":[{"p":[[-24.4,-280.2],[-0.4,-221.4],[10.4,-194.8],[27.5,-152.9],[43.5,-113.7],[60.1,-72.8],[77.2,-30.9]],"w":7,"n":"民族路"},{"p":[[308.1,-28.1],[305.5,-27.0],[223.4,5.5],[209.2,11.1],[134.9,40.5],[110.3,50.3]],"w":7,"n":"中山東路"},{"p":[[-120.9,-241.9],[-118.7,-221.7],[-159.5,-126.8],[-144.2,-51.5],[-124.5,-16.4],[-77.2,30.9]],"w":7,"n":""},{"p":[[545.4,-311.9],[440.8,-270.6],[341.4,-231.4],[244.7,-193.1],[143.8,-153.3],[43.5,-113.7],[-55.7,-74.5],[-106.7,-54.4]],"w":7,"n":"民生路"},{"p":[[559.7,-275.5],[455.6,-233.3],[356.9,-193.2],[259.9,-153.8],[159.7,-113.3],[60.1,-72.8],[-38.5,-32.8]],"w":4,"n":"大仁街"},{"p":[[593.5,-189.5],[489.9,-147.1],[391.1,-106.6],[293.4,-66.5],[194.4,-26.0],[95.7,14.5],[26.0,43.1]],"w":4,"n":"大智街"},{"p":[[-77.2,30.9],[-21.5,8.6],[77.2,-30.9]],"w":7,"n":"中華路"},{"p":[[-106.7,-54.4],[-77.2,30.9]],"w":7,"n":"新生路2巷"},{"p":[[-55.7,-74.5],[-38.5,-32.8],[-21.5,8.6],[11.8,89.3]],"w":7,"n":"成功路"},{"p":[[-53.9,115.3],[-49.9,125.7],[-32.9,169.1],[19.5,152.5],[24.5,148.9],[25.4,141.3],[26.8,135.2],[32.9,131.6],[127.4,98.4],[133.1,98.3],[138.6,99.3],[142.2,101.9],[148.6,118.0]],"w":4,"n":"東海路"},{"p":[[-49.9,125.7],[-73.8,133.8],[-98.0,145.8],[-101.1,149.0],[-106.3,157.4],[-117.5,175.6],[-120.2,182.0],[-121.3,190.7],[-119.6,202.4],[-117.5,209.9],[-116.7,221.0],[-118.8,234.3],[-118.8,239.6],[-117.1,242.5],[-113.9,245.6],[-109.7,247.9],[-106.2,248.7],[-99.2,249.6],[-93.4,250.3],[-90.1,251.0],[-86.7,252.6],[-83.2,255.9],[-69.1,291.0],[-69.1,293.3],[-72.9,322.1],[-73.4,331.1],[-73.8,336.5],[-87.7,357.2]],"w":4,"n":"東海路"},{"p":[[-76.8,60.7],[-119.3,118.3],[-138.6,141.4],[-151.5,157.0],[-158.5,169.9],[-164.5,188.4],[-165.5,191.4],[-170.4,206.4],[-172.6,222.1],[-174.7,239.0],[-177.1,262.5],[-175.9,277.7],[-173.5,287.6]],"w":4,"n":""},{"p":[[-173.3,71.3],[-153.0,62.7],[-77.2,30.9]],"w":7,"n":""},{"p":[[-242.9,215.4],[-226.9,217.3],[-210.3,212.9],[-186.5,148.3],[-180.0,129.6],[-172.8,119.5],[-117.3,71.6],[-106.9,60.5],[-100.5,51.1],[-77.2,30.9]],"w":7,"n":"東發路"},{"p":[[-124.5,-16.4],[-162.5,10.7]],"w":4,"n":""},{"p":[[110.3,50.3],[58.4,70.9],[56.2,71.8],[11.8,89.3],[-53.9,115.3]],"w":7,"n":"中山東路"},{"p":[[77.2,-30.9],[95.7,14.5],[110.3,50.3]],"w":7,"n":"民族路"},{"p":[[77.2,-30.9],[176.7,-70.6],[249.2,-99.6]],"w":7,"n":"中華路"},{"p":[[-77.2,30.9],[-71.4,42.2],[-71.6,46.9],[-76.8,60.7],[-73.0,66.5],[-53.9,115.3]],"w":4,"n":"東海路"},{"p":[[140.5,55.3],[134.9,40.5]],"w":4,"n":""},{"p":[[56.2,71.8],[62.2,86.7],[68.7,102.5]],"w":2,"n":""},{"p":[[58.4,70.9],[64.4,85.8],[68.6,96.0],[72.4,96.6]],"w":4,"n":""},{"p":[[83.2,100.5],[126.0,83.4]],"w":2,"n":""},{"p":[[68.7,102.5],[75.9,103.5],[83.2,100.5]],"w":2,"n":""}],"blds":[{"p":[[51.4,-46.4],[45.8,-60.9],[61.1,-66.7],[66.6,-52.2]],"h":10},{"p":[[143.9,72.3],[119.7,82.0],[105.7,87.6],[81.6,97.3],[74.0,100.3],[73.7,99.6],[72.4,96.6],[70.6,92.1],[78.2,89.0],[79.1,88.7],[77.7,85.3],[81.7,83.7],[80.1,79.6],[79.7,78.7],[99.8,70.6],[97.8,65.8],[110.4,60.7],[112.3,65.6],[132.4,57.5],[132.7,58.5],[140.5,55.3],[144.7,53.7],[146.3,57.8],[147.7,61.1],[151.0,69.4]],"h":10},{"p":[[74.0,100.3],[73.7,99.6],[69.9,99.0],[67.0,96.1],[63.0,86.4],[62.2,86.7],[61.5,87.0],[67.9,102.8],[68.7,102.5]],"h":3.2}]};
+function mapScene(M){
+  const rm=new THREE.MeshBasicMaterial({color:0x3a3e44,depthWrite:false}),pm=new THREE.MeshBasicMaterial({color:0x8d8f93,depthWrite:false});
+  const named=new Map();
+  M.roads.forEach(r=>{const m=r.w<=2?pm:rm,y=r.w<=2?.02:.015;
+    for(let i=0;i<r.p.length-1;i++){const [x0,z0]=r.p[i],[x1,z1]=r.p[i+1],dx=x1-x0,dz=z1-z0,len=Math.hypot(dx,dz);if(len<.1)continue;
+      const g=new THREE.Group(),s=new THREE.Mesh(new THREE.PlaneGeometry(len,r.w),m);s.rotation.x=-Math.PI/2;g.add(s);
+      g.position.set((x0+x1)/2,y,(z0+z1)/2);g.rotation.y=-Math.atan2(dz,dx);envGroup.add(g)}
+    r.p.forEach(([x,z])=>{const c=new THREE.Mesh(new THREE.CircleGeometry(r.w/2,14),m);c.rotation.x=-Math.PI/2;c.position.set(x,y,z);envGroup.add(c)});
+    if(r.n&&(!named.has(r.n)||named.get(r.n).p.length<r.p.length))named.set(r.n,r)});
+  named.forEach((r,n)=>{const i=Math.floor((r.p.length-1)/2),[x0,z0]=r.p[i],[x1,z1]=r.p[i+1];let a=-Math.atan2(z1-z0,x1-x0);if(Math.cos(a)<0)a+=Math.PI;
+    const t=new THREE.Mesh(new THREE.PlaneGeometry(16,4),new THREE.MeshBasicMaterial({map:textTex(n,null,'#f1f1ee',512,128,84),transparent:true,depthWrite:false}));
+    const g=new THREE.Group();t.rotation.x=-Math.PI/2;g.add(t);g.position.set((x0+x1)/2,.05,(z0+z1)/2);g.rotation.y=a;envGroup.add(g)});
+  M.blds.forEach((b,i)=>{const sh=new THREE.Shape(b.p.map(([x,z])=>new THREE.Vector2(x,-z)));
+    const m=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:b.h,bevelEnabled:false}),mat([0xc9b79c,0xb8bfc4,0xd6cdb8][i%3]));
+    m.rotation.x=-Math.PI/2;m.castShadow=m.receiveShadow=true;envGroup.add(m)});
+}
+
+const SCEN={
+  house:{name:'透天厝火警',desc:'四層透天厝二樓起火，可切換樓層進入室內',top:'var(--c-veh)',cam:[34,34,40],tgt:[0,0,-8],
+    env(){road(10);row(-15,0,-5,5,10,0);row(15,Math.PI,-5,5,10);const b=interiorHouse();b.position.set(HB.x,0,HB.z);envGroup.add(b);S.bld=b},
+    init:[['fire',-.8,-10.6,0,'二樓主臥室起火',.6,3.4],['smokeLayer',0,-15,0,'2F 濃煙層',1,3.4],['smoke',0,-7.6,0,'二樓窗口冒煙',.8,4.6],['hydrant',14,-6],['civ',-5,-6.2],['civ',-6.2,-6.5],['car',12,-3.4,0]],
+    inj:[
+      {at:0,t:'119 報案：透天厝二樓冒出濃煙，報案人稱疑有人受困',fx:()=>P(0,0,-8)},
+      {at:90,t:'第一梯次水箱車 2 輛、救護車 1 輛抵達現場',fx:()=>firstWave([['engine','第一梯次 水箱車 1',-9],['engine','第一梯次 水箱車 2',-18],['amb','第一梯次 救護車',-27]])},
+      {at:180,t:'二樓窗口有民眾揮手呼救',fx(){const e=addEntity('civ',1.4,-8.7,Math.PI/2,'二樓受困民眾',1,true,3.4);setStatus(e,'受困待救');return P(1.4,3.4,-8.7)}},
+      {at:270,t:'屋主表示一樓後側孝親房可能還有一名行動不便的長者',fx(){const e=addEntity('victim',-1.6,-19.6,0,'受困長者',1,true,.2);setStatus(e,'位置待確認');return P(-1.6,0,-19.6)}},
+      {at:360,t:'火勢突破二樓窗戶，火舌往三樓竄升',fx(){addEntity('fire',-.4,-7.5,0,'二樓窗口竄燒',.6,true,3.6);addEntity('smokeLayer',0,-15,0,'3F 濃煙層',1,true,6.6);return P(0,3.2,-8)}},
+      {at:450,t:'一名消防員回報空氣瓶低壓警報',fx(){const e=findEnt('ff');if(!e){log('場景中沒有消防員，無法標示低壓人員','sys');return null}setStatus(e,'空氣瓶低壓');return e.obj.position.clone()}},
+      {at:540,t:'第二梯次車輛抵達集結區',fx:()=>reinforce()},
+      {at:630,t:'鄰棟三樓出現濃煙，研判有延燒可能',fx(){const w=findEnt('wind');addEntity('smoke',10,-7.6,w?w.obj.rotation.y:0,'鄰棟三樓濃煙',.8,true,6.6);return P(10,6.4,-8)}},
+      {at:720,t:'搜救小組自一樓救出長者，無呼吸心跳',fx(){let e=findEnt('victim','長者');const to=P(-3,0,-6.4);
+        if(e){e.name='救出長者';setStatus(e,'無呼吸心跳');renderSceneList();const p0=e.obj.position.clone();push(e,2000,{x:to.x,y:0,z:to.z});tween(2000,k=>e.obj.position.lerpVectors(p0,to,ease(k)))}
+        else{e=addEntity('victim',to.x,to.z,0,'救出長者',1,true);setStatus(e,'無呼吸心跳')}return to}},
+      {at:810,t:'台電人員抵達，詢問是否需要斷電',fx(){driveIn('car','台電工程車',30,laneZ());return P(30,0,laneZ())}},
+      {at:900,t:'主要火勢受到控制，二樓仍有悶燒',fx(){fades('fire',.5);return P(-.8,3.2,-10.6)}},
+      {at:1020,t:'安全官回報二樓樓板有塌陷跡象，建議人員撤出二樓',fx(){addEntity('note',-1,-12.2,0,'2F 樓板塌陷危險',1,true,3.4);addEntity('tape',0,-7.2,0,'塌陷危險警戒',1,true);return P(0,3.2,-12)}},
+      {at:1110,t:'火勢撲滅，進入殘火處理與火場清查',fx(){fades('fire',0);fades('smoke',.4);fades('smokeLayer',0);return P(0,3.2,-10.6)}}]},
+  crash:{name:'車禍救助',desc:'雙車對撞，駕駛受困、油料外洩',top:'var(--c-ppl)',cam:[22,20,24],tgt:[0,0,0],
+    env(){road(12);for(let x=-60;x<=60;x+=12){tree(x,-11);tree(x+6,11)}},
+    init:[['car',-.5,1.2,.45,'自小客 A'],['car',3,-1.4,2.7,'自小客 B'],['victim',-3,4],['spill',1.5,0,0,null,.35],['civ',-6,5]],
+    inj:[
+      {at:0,t:'119 報案：省道雙車對撞，一人受困車內',fx:()=>P(1,0,0)},
+      {at:90,t:'救助器材車、救護車抵達現場',fx:()=>firstWave([['rescue','救助器材車',-12],['amb','第一梯次 救護車',-23]])},
+      {at:180,t:'A 車駕駛意識不清，下肢受困',fx(){const e=findEnt('car','A');if(!e)return null;setStatus(e,'駕駛受困');return e.obj.position.clone()}},
+      {at:270,t:'B 車引擎蓋冒煙',fx(){const e=findEnt('car','B');if(!e)return null;const p=e.obj.position,r=e.obj.rotation.y,w=findEnt('wind');addEntity('smoke',p.x+Math.cos(r)*1.6,p.z-Math.sin(r)*1.6,w?w.obj.rotation.y:0,'B 車引擎冒煙',.35,true,.5);return p.clone()}},
+      {at:360,t:'油料洩漏擴大，流向路肩',fx:()=>grow('spill',2.2)},
+      {at:450,t:'後方車流回堵 1 公里',fx:()=>trafficJam()},
+      {at:540,t:'現場傷患增加為 3 人，其中 1 人頭部撕裂傷',fx(){addEntity('victim',5.5,-3.6,.8,null,1,true);const e=addEntity('victim',6.8,-1,2.2,null,1,true);setStatus(e,'頭部撕裂傷');return P(6,0,-2.3)}},
+      {at:630,t:'第二輛救護車由對向車道抵達',fx(){driveIn('amb','第二梯次 救護車',16,-laneZ(),0,'e');return P(16,0,-laneZ())}},
+      {at:720,t:'A 車駕駛血壓下降、意識變差，需加速破壞救出',fx(){const e=findEnt('car','A');if(!e)return null;setStatus(e,'生命徵象惡化');return e.obj.position.clone()}},
+      {at:810,t:'媒體 SNG 車抵達，記者要求進入封鎖線採訪',fx(){driveIn('car','媒體 SNG 車',30,-laneZ(),0,'e');return P(30,0,-laneZ())}},
+      {at:900,t:'警方要求儘速恢復單線通車',fx(){for(let i=0;i<7;i++)addEntity('cone',-14+i*4.6,.3,0,null,1,true);log('中央已擺放交通錐，封閉單側車道','sys');return P(0,0,0)}},
+      {at:1020,t:'A 車駕駛救出，準備送醫',fx(){const a=findEnt('car','A');if(a)setStatus(a,'');const p=a?a.obj.position:P(0,0,0);const e=addEntity('victim',p.x-1,p.z+3.4,0,'A 車駕駛',1,true);setStatus(e,'準備送醫');return e.obj.position.clone()}},
+      {at:1110,t:'傷患全數送醫，拖吊車抵達準備移除事故車',fx(){driveIn('tow','拖吊車',8,-laneZ(),0,'e');return P(8,0,-laneZ())}}]},
+  tanker:{name:'槽車翻覆洩漏',desc:'省道槽車翻覆，UN 1203 汽油外洩',top:'var(--c-env)',cam:[44,40,46],tgt:[0,0,-2],
+    env(){road(16);for(const s of[-1,1])envGroup.add(box(800,.6,.15,0xc0c4c8,0,.7,s*9.2));for(let x=-80;x<=80;x+=14){tree(x,-18);tree(x+7,18)}},
+    init:[['tankerOver',0,-2,.18],['spill',2,-3.5,0,null,1.3],['zones',2,-3],['wind',-24,-22,.6],['car',18,-3.5,Math.PI]],
+    inj:[
+      {at:0,t:'119 報案：省道槽車翻覆，有液體外洩並有刺鼻油味',fx:()=>P(0,0,-2)},
+      {at:90,t:'第一梯次抵達，於上風處約 50 公尺停車',fx:()=>firstWave([['engine','第一梯次 水箱車 1',-42],['engine','第一梯次 水箱車 2',-51],['amb','第一梯次 救護車',-60]])},
+      {at:180,t:'以望遠鏡判讀標示牌：33／1203（汽油）',fx(){const e=findEnt('tankerOver');if(!e)return null;setStatus(e,'33/1203 汽油');return e.obj.position.clone()}},
+      {at:270,t:'槽車駕駛仍受困駕駛室，可聽到呼救聲',fx(){const e=findEnt('tankerOver')||findEnt('tanker');if(!e)return null;setStatus(e,'33/1203｜駕駛受困');return e.obj.position.clone()}},
+      {at:360,t:'洩漏量增加，油品流向路側排水溝',fx:()=>grow('spill',1.6)},
+      {at:450,t:'附近民眾聚集圍觀拍照，位於暖區內',fx(){for(let i=0;i<5;i++)addEntity('civ',13+Math.random()*5,9.5+Math.random()*3,Math.random()*6,null,1,true);return P(15,0,11)}},
+      {at:540,t:'風向轉為東北風',fx:()=>setWind(-3*Math.PI/4)},
+      {at:630,t:'下游 300 公尺有加油站',fx(){addEntity('note',70,-14,0,'加油站（下游 300 m）',1,true);return P(70,0,-14)}},
+      {at:720,t:'化災搶救車由東側抵達',fx(){driveIn('rescue','化災搶救車',36,-laneZ(),0,'e');return P(36,0,-laneZ())}},
+      {at:810,t:'偵檢回報洩漏區下風處 LEL 讀值 15%',fx(){const e=findEnt('spill');if(!e)return null;setStatus(e,'LEL 15%');return e.obj.position.clone()}},
+      {at:900,t:'環保局人員抵達，要求說明洩漏量與流向',fx(){driveIn('car','環保局車輛',47,-laneZ(),0,'e');return P(47,0,-laneZ())}},
+      {at:1020,t:'槽車業者回報吸油車及吊車約 30 分鐘後抵達',fx(){addEntity('note',58,-12,0,'業者吸油車、吊車（30 分）',1,true);return P(58,0,-12)}},
+      {at:1110,t:'完成止漏，洩漏範圍不再擴大',fx(){const e=findEnt('spill');if(!e)return null;setStatus(e,'已止漏');return e.obj.position.clone()}}]},
+  chenggong:{name:'成功鎮中華路周邊',desc:'依開放地圖資料繪製的真實道路，建築由教官從「其他→透天厝」自行擺放',top:'var(--c-res)',cam:[60,70,90],tgt:[0,0,0],env(){mapScene(MAP_CG)},init:[],inj:[{t:'現場出現新的狀況'}]},
+  blank:{name:'空白場景',desc:'只有道路，自行布置情境',top:'var(--c-ext)',cam:[34,30,38],tgt:[0,0,0],env(){road(10)},init:[],inj:[{t:'現場出現新的狀況'}]}
+};
+
+/* ---------- 狀態 ---------- */
+const S={scen:'house',speed:1,clock:{run:false,base:0,startAt:0,speed:1},msel:[],pendingIdx:null,role:'ctrl',cat:'all',q:'',placing:null,ghost:null,sel:null,labels:true,run:false,elapsed:0,last:0,log:[]};
+const entities=new Map();let nextId=1;const counters={};
+
+/* ---------- 連線（Firebase Realtime Database） ---------- */
+let fdb=null;
+try{if(typeof firebase!=='undefined'&&FIREBASE_CONFIG&&FIREBASE_CONFIG.databaseURL){firebase.initializeApp(FIREBASE_CONFIG);fdb=firebase.database()}}catch(err){console.error(err)}
+const CID=(()=>{try{let c=localStorage.getItem('ics3d:cid');if(!c){c=Math.random().toString(36).slice(2,8);localStorage.setItem('ics3d:cid',c)}return c}catch(e){return Math.random().toString(36).slice(2,8)}})();
+const NET={on:false,code:null,ref:null,host:false,me:{name:'',pos:'',label:''},players:{},offset:0,meta:null,injQ:null};
+let applying=false;
+if(fdb)fdb.ref('.info/serverTimeOffset').on('value',s=>{NET.offset=s.val()||0});
+const serverNow=()=>Date.now()+(NET.on?NET.offset:0);
+const isTrainee=()=>NET.on&&!NET.host;
+function canEdit(e){return !isTrainee()||e.owner===CID||(NET.me.pos==='指揮官'&&CATALOG[e.type].cat!=='env')}
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function rec(e){const o=e.obj,b=o.userData.base||1,r2=v=>Math.round(v*100)/100;
+  return {type:e.type,name:e.name,x:r2(o.position.x),y:r2(o.position.y),z:r2(o.position.z),rot:Math.round(o.rotation.y*1000)/1000,scale:Math.round(o.scale.x/b*1000)/1000,status:e.status||'',owner:e.owner||'',by:CID,mv:0}}
+function push(e,mv=0,patch){if(!NET.on||applying||!e)return;const r=rec(e);if(patch)Object.assign(r,patch);r.mv=mv;NET.ref.child('ents/'+e.id).set(r)}
+function moveTo(e,r,mv){if(drag&&drag.e===e)return;const o=e.obj,b=o.userData.base||1;
+  const p0=o.position.clone(),r0=o.rotation.y,s0=o.scale.x,p1=new THREE.Vector3(r.x,r.y||0,r.z),r1=r.rot||0,s1=b*(r.scale||1);
+  if(e._tw)e._tw.dead=true;e.scale=r.scale||1;
+  if(!mv){o.position.copy(p1);o.rotation.y=r1;o.scale.setScalar(s1);return}
+  const tw={dead:false};e._tw=tw;
+  tween(mv,k=>{if(tw.dead)return;const kk=mv>1000?ease(k):k;o.position.lerpVectors(p0,p1,kk);o.rotation.y=r0+(r1-r0)*kk;o.scale.setScalar(s0+(s1-s0)*kk)})}
+function applyRemote(id,r){if(!r||(r.by===CID&&entities.has(id)))return;applying=true;try{
+  let e=entities.get(id);
+  if(!e){const fx=r.from&&r.mv?r.from:null;e=addEntity(r.type,fx?fx[0]:r.x,fx?fx[1]:r.z,r.rot||0,r.name,r.scale||1,true,r.y||0,id);if(!e)return;
+    e.owner=r.owner||'';if(r.status){e.status=r.status;renderLabel(e)}if(fx)moveTo(e,r,r.mv);return}
+  if(e.name!==r.name){e.name=r.name;renderSceneList()}
+  e.status=r.status||'';e.owner=r.owner||'';renderLabel(e);
+  moveTo(e,r,r.mv||0);if(S.sel===id)updateInspector();
+}finally{applying=false}}
+function clockObj(){return NET.on?(NET.meta||{}):S.clock}
+function calcElapsed(){const m=clockObj();return (m.base||0)+(m.run?Math.max(0,serverNow()-(m.startAt||0))*(m.speed||1):0)}
+function setClock(patch){const m=clockObj();const nm=Object.assign({run:!!m.run,speed:m.speed||1},{base:calcElapsed(),startAt:serverNow()},patch);
+  if(NET.on){NET.meta=Object.assign({},NET.meta,nm);NET.ref.child('meta').update({run:nm.run,base:nm.base,startAt:nm.startAt,speed:nm.speed})}else S.clock=nm;S.speed=nm.speed}
+
+
+function clockStr(ms=S.elapsed){const s=Math.floor(ms/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+function log(text,kind=''){const entry={t:clockStr(),text,kind,who:NET.on?NET.me.label:''};
+  if(NET.on){if(applying)return;NET.ref.child('log').push(entry)}else{S.log.push(entry);renderLog()}}
+let logRaf=0;function renderLog(){if(logRaf)return;logRaf=requestAnimationFrame(()=>{logRaf=0;
+  $('#logList').innerHTML=S.log.map(l=>`<li class="${l.kind||''}"><span class="num">${l.t}</span><span>${l.who?`<span class="who">${esc(l.who)}</span>`:''}${esc(l.text)}</span></li>`).join('');const el=$('#logList');el.scrollTop=el.scrollHeight})}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function addEntity(type,x,z,rot=0,name=null,scale=1,quiet=false,y=0,idArg=null){
+  const def=CATALOG[type];if(!def)return null;
+  counters[type]=(counters[type]||0)+1;
+  const obj=def.build();obj.userData.base=obj.scale.x;obj.position.set(x,0,z);obj.rotation.y=rot;obj.scale.multiplyScalar(scale);
+  obj.traverse(o=>{if(o.isMesh&&def.noShadow)o.castShadow=false});
+  const id=idArg||(CID+'_'+Date.now().toString(36)+(nextId++));obj.userData.entityId=id;scene.add(obj);
+  const label=document.createElement('div');label.className='tag3d';label.dataset.cat=def.cat;
+  const nm=name||`${def.name} ${[...entities.values()].filter(x=>x.type===type).length+1}`;label.textContent=nm;labelsEl.appendChild(label);
+  const bb=new THREE.Box3().setFromObject(obj);
+  const e={id,type,name:nm,obj,label,scale,h:def.h||Math.max(.8,bb.max.y),r:Math.max(1,Math.hypot(bb.max.x-bb.min.x,bb.max.z-bb.min.z)/2)};
+  e.owner=(!applying&&isTrainee())?CID:'';
+  entities.set(id,e);obj.position.y=y;renderSceneList();
+  if(!applying)push(e);
+  if(!quiet)log(`部署「${nm}」`);
+  return e}
+function removeEntity(id,quiet=false){const e=entities.get(id);if(!e)return;if(e._tw)e._tw.dead=true;scene.remove(e.obj);disposeObj(e.obj);e.label.remove();entities.delete(id);
+  if(NET.on&&!applying)NET.ref.child('ents/'+id).remove();
+  if(S.sel===id)select(null);renderSceneList();if(!quiet)log(`撤除「${e.name}」`)}
+function disposeObj(o){o.traverse(m=>{if(m.geometry)m.geometry.dispose();if(m.material)[].concat(m.material).forEach(x=>x.dispose())})}
+
+/* ---------- 選取 ---------- */
+const selRing=flat(new THREE.RingGeometry(1,1.12,48),0xd4ea38,.08,.95);selRing.visible=false;scene.add(selRing);
+function select(id){S.sel=id;entities.forEach(e=>e.label.classList.toggle('sel',e.id===id));
+  const e=entities.get(id);selRing.visible=!!e;
+  if(e){selRing.scale.setScalar(e.r+.4);$('#inName').value=e.name;updateInspector();$('#inspector').classList.add('show');$('#palette').classList.remove('open')}
+  else $('#inspector').classList.remove('show');
+  renderSceneList()}
+function ownerName(id){const p=NET.players[id];return p?(p.host?`教官 ${p.name}`:`${p.name}（${p.pos}）`):'（已離線）'}
+function setView(f){S.view=f;const b=S.bld;if(!b)return;b.userData.floors.forEach((g,i)=>g.visible=f==null||i<=f);b.userData.roof.visible=f==null;
+  document.querySelectorAll('#floorNav button').forEach(x=>x.classList.toggle('on',x.dataset.f==='ext'?f==null:(f!=null&&+x.dataset.f===f)));
+  if(f==null)flyTo(P(0,0,-8),P(26,26,30));else flyTo(P(HB.x,f*HB.H,HB.z),P(8,15,13))}
+function moveLevel(d){const e=entities.get(S.sel);if(!e)return;if(!canEdit(e))return denied();const p=e.obj.position;
+  if(!inBld(p.x,p.z)){flash('物件要在建築物內才能上下樓');return}const lv=Math.round(p.y/HB.H)+d;if(lv<0||lv>=HB.F)return;
+  p.y=LV(lv);push(e,300);log(`「${e.name}」移至 ${lv+1}F`);if(S.view!=null&&lv!==S.view)setView(lv);updateInspector()}
+function updateInspector(){const e=entities.get(S.sel);if(!e)return;const p=e.obj.position;const ok=canEdit(e);
+  const inB=inBld(p.x,p.z);$('#upBtn').style.display=$('#dnBtn').style.display=inB?'':'none';$('#upBtn').disabled=$('#dnBtn').disabled=!ok;
+  ['#rotL','#rotR','#delBtn','#clrStatus'].forEach(q=>$(q).disabled=!ok);$('#inName').readOnly=!ok;
+  const or=$('#ownRow');or.style.display=NET.on?'':'none';
+  if(NET.on){const sel=$('#inOwner');sel.disabled=!NET.host;
+    const opts=[['','未指派']].concat(Object.entries(NET.players).filter(([k,v])=>!v.host).map(([k,v])=>[k,`${v.name}（${v.pos}）`]));
+    if(e.owner&&!NET.players[e.owner])opts.push([e.owner,'（已離線的學員）']);
+    const html=opts.map(([k,n])=>`<option value="${esc(k)}"${k===(e.owner||'')?' selected':''}>${esc(n)}</option>`).join('');if(sel.innerHTML!==html)sel.innerHTML=html}
+  const st=$('#inStatus');st.style.display=e.status?'':'none';st.querySelector('span').textContent=e.status||'';
+  $('#inMeta').innerHTML=`${CATALOG[e.type].name}　${inBld(p.x,p.z)?`室內 ${Math.round(p.y/HB.H)+1}F　`:''}位置 <span class="num">${p.x.toFixed(1)}, ${p.z.toFixed(1)}</span>　方向 <span class="num">${Math.round(((e.obj.rotation.y*180/Math.PI)%360+360)%360)}°</span>`}
+function denied(){flash('這個物件沒有指派給你，請教官指派')}
+function rotateSel(deg){const e=entities.get(S.sel);if(!e)return;if(!canEdit(e))return denied();e.obj.rotation.y+=deg*Math.PI/180;push(e,200);updateInspector()}
+function focusOn(e){const off=camera.position.clone().sub(controls.target);controls.target.copy(e.obj.position);camera.position.copy(e.obj.position).add(off)}
+
+/* ---------- 面板 ---------- */
+function canUse(def){return S.role==='ctrl'||def.cat!=='env'}
+function renderTabs(){$('#tabs').innerHTML=CATS.filter(([k])=>S.role==='ctrl'||k!=='env').map(([k,n])=>`<button type="button" class="tab ${S.cat===k?'on':''}" data-cat="${k}">${n}</button>`).join('')}
+function renderItems(){const q=S.q.trim();
+  $('#items').innerHTML=Object.entries(CATALOG).filter(([k,d])=>canUse(d)&&(S.cat==='all'||d.cat===S.cat)&&(!q||d.name.includes(q))).map(([k,d])=>
+    `<button type="button" class="item ${S.placing===k?'on':''}" data-type="${k}" style="--cc:${CAT_COLOR[d.cat]}"><b>${d.name}</b><small>${CATS.find(c=>c[0]===d.cat)[1]}</small></button>`).join('')||'<p style="color:var(--muted);padding:8px">找不到符合的物件，換個關鍵字試試。</p>'}
+function renderSceneList(){$('#count').textContent=entities.size;
+  $('#sceneList').innerHTML=[...entities.values()].map(e=>`<button type="button" class="srow ${S.sel===e.id?'on':''}" data-id="${e.id}"><i style="--cc:${CAT_COLOR[CATALOG[e.type].cat]}"></i><span>${esc(e.name)}</span><span>${NET.on&&e.owner?(e.owner===CID?'我的':'已指派'):CATS.find(c=>c[0]===CATALOG[e.type].cat)[1]}</span></button>`).join('')||'<p style="color:var(--muted);padding:6px;font-size:13px">從上方點選物件，再點地面放置。</p>'}
+$('#tabs').addEventListener('click',ev=>{const b=ev.target.closest('.tab');if(!b)return;S.cat=b.dataset.cat;renderTabs();renderItems()});
+$('#search').addEventListener('input',ev=>{S.q=ev.target.value;renderItems()});
+$('#items').addEventListener('click',ev=>{const b=ev.target.closest('.item');if(!b)return;startPlacing(b.dataset.type)});
+$('#sceneList').addEventListener('click',ev=>{const b=ev.target.closest('.srow');if(!b)return;const e=entities.get(b.dataset.id);if(!e)return;select(e.id);focusOn(e)});
+
+function startPlacing(type){cancelPlacing();S.placing=type;const g=CATALOG[type].build();
+  g.traverse(o=>{if(o.isMesh){o.material=[].concat(o.material).map(m=>{const c=m.clone();c.transparent=true;c.opacity=Math.min(c.opacity??1,.45);c.depthWrite=false;return c});if(o.material.length===1)o.material=o.material[0];o.castShadow=false}});
+  g.visible=false;scene.add(g);S.ghost=g;
+  $('#placeTip').textContent=`點地面放置「${CATALOG[type].name}」，Esc 取消`;$('#placeTip').classList.add('show');
+  $('#palette').classList.remove('open');renderItems()}
+function cancelPlacing(){if(S.ghost){scene.remove(S.ghost);disposeObj(S.ghost)}S.ghost=null;S.placing=null;$('#placeTip').classList.remove('show');renderItems()}
+
+/* ---------- 指標互動 ---------- */
+const ray=new THREE.Raycaster(),groundPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0),tmpV=new THREE.Vector3();
+function ndc(ev){const r=renderer.domElement.getBoundingClientRect();return new THREE.Vector2((ev.clientX-r.left)/r.width*2-1,-(ev.clientY-r.top)/r.height*2+1)}
+function groundAt(p){ray.setFromCamera(p,camera);return ray.ray.intersectPlane(groundPlane,new THREE.Vector3())}
+function planeAt(p,y){ray.setFromCamera(p,camera);return ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0,1,0),-y),new THREE.Vector3())}
+function floorAt(p){if(S.bld&&S.view!=null){const v=planeAt(p,LV(S.view));if(v&&inBld(v.x,v.z))return v}return groundAt(p)}
+function pick(p){ray.setFromCamera(p,camera);const hits=ray.intersectObjects([...entities.values()].map(e=>e.obj),true).filter(h=>h.object.visible);
+  const ents=hits.map(h=>{let o=h.object;while(o&&!o.userData.entityId)o=o.parent;return o&&entities.get(o.userData.entityId)}).filter(Boolean);
+  const vis=ents.filter(e=>e.obj.visible);return vis.find(e=>!CATALOG[e.type].flatPick)||vis[0]||null}
+let down=null,drag=null;
+const ptrs=new Set();
+function cancelDrag(revert){if(!drag)return;const e=drag.e;if(revert)e.obj.position.copy(drag.start);drag=null;controls.enabled=true;if(revert)push(e,150);updateInspector()}
+stageEl.addEventListener('pointerdown',ev=>{if(ev.target!==renderer.domElement)return;ptrs.add(ev.pointerId);
+  if(ptrs.size>1){cancelDrag(true);down=null;return}
+  down={x:ev.clientX,y:ev.clientY};
+  if(S.placing||ev.button!==0)return;const e=pick(ndc(ev));
+  // 只有已選取的物件才能拖曳；未選取時按下去一律當作旋轉視角
+  if(e&&e.id===S.sel&&canEdit(e)){const g=planeAt(ndc(ev),e.obj.position.y);if(g){drag={e,off:e.obj.position.clone().sub(g).setY(0),start:e.obj.position.clone(),moved:false};controls.enabled=false}}},{capture:true});
+stageEl.addEventListener('pointermove',ev=>{const p=ndc(ev);
+  if(drag&&down){if(!drag.moved&&Math.hypot(ev.clientX-down.x,ev.clientY-down.y)<8)return;
+    const g=planeAt(p,drag.e.obj.position.y);if(g){let nx=g.x+drag.off.x,nz=g.z+drag.off.z;if(drag.e.obj.position.y>.5&&S.bld&&inBld(drag.start.x,drag.start.z)){nx=THREE.MathUtils.clamp(nx,HB.x-HB.W/2+.4,HB.x+HB.W/2-.4);nz=THREE.MathUtils.clamp(nz,HB.z-HB.D/2+.4,HB.z+HB.D/2-.4)}drag.e.obj.position.x=nx;drag.e.obj.position.z=nz;drag.moved=true;updateInspector();const nw=performance.now();if(!drag.lp||nw-drag.lp>120){drag.lp=nw;push(drag.e,120)}}}
+  else if(S.ghost){const g=floorAt(p);if(g){S.ghost.visible=true;S.ghost.position.set(g.x,g.y,g.z)}}});
+window.addEventListener('pointercancel',ev=>{ptrs.delete(ev.pointerId);cancelDrag(true);down=null});
+window.addEventListener('pointerup',ev=>{ptrs.delete(ev.pointerId);if(!down)return;const dist=Math.hypot(ev.clientX-down.x,ev.clientY-down.y);
+  if(drag){const de=drag.e;if(drag.moved){const p=de.obj.position;log(`移動「${de.name}」至 ${p.x.toFixed(0)}, ${p.z.toFixed(0)}`)}drag=null;controls.enabled=true;push(de,150)}
+  else if(dist<6&&ev.target===renderer.domElement){const p=ndc(ev);
+    if(S.placing){const g=floorAt(p);if(g){const rot=S.ghost?S.ghost.rotation.y:0;const e=addEntity(S.placing,g.x,g.z,rot,null,1,false,g.y);if(!ev.shiftKey)cancelPlacing();select(e.id)}}
+    else{const hit=pick(p);select(hit?hit.id:null)}}
+  down=null});
+
+/* ---------- 鍵盤 ---------- */
+const keys={};
+window.addEventListener('keydown',ev=>{if(ev.target.closest('input,textarea,dialog'))return;const k=ev.key.toLowerCase();keys[k]=true;
+  if(k==='escape'){if(drag)cancelDrag(true);else if(S.placing)cancelPlacing();else select(null)}
+  if(k==='r'){if(S.ghost)S.ghost.rotation.y+=Math.PI/12;else rotateSel(ev.shiftKey?-15:15)}
+  if((k==='delete'||k==='backspace')&&S.sel){ev.preventDefault();$('#delBtn').click()}
+  if(k==='l')toggleLabels()});
+window.addEventListener('keyup',ev=>{keys[ev.key.toLowerCase()]=false});
+window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false});
+
+/* ---------- 按鈕 ---------- */
+$('#rotL').onclick=()=>rotateSel(15);$('#rotR').onclick=()=>rotateSel(-15);
+$('#delBtn').onclick=()=>{const e=entities.get(S.sel);if(!e)return;if(!canEdit(e))return denied();removeEntity(e.id)};
+$('#inOwner').addEventListener('change',ev=>{const e=entities.get(S.sel);if(!e||!NET.host)return;e.owner=ev.target.value;push(e);log(`「${e.name}」指派給 ${e.owner?ownerName(e.owner):'（未指派）'}`,'sys');renderSceneList()});
+$('#upBtn').onclick=()=>moveLevel(1);$('#dnBtn').onclick=()=>moveLevel(-1);
+$('#floorNav').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;setView(b.dataset.f==='ext'?null:+b.dataset.f)});
+$('#focusBtn').onclick=()=>{const e=entities.get(S.sel);e&&focusOn(e)};
+$('#inName').addEventListener('change',ev=>{const e=entities.get(S.sel);if(!e||!canEdit(e))return;const v=ev.target.value.trim()||e.name;if(v!==e.name){log(`「${e.name}」改名為「${v}」`,'sys');e.name=v;renderLabel(e);renderSceneList();push(e)}});
+function toggleLabels(){S.labels=!S.labels;$('#labelBtn').classList.toggle('on',S.labels)}
+$('#labelBtn').onclick=toggleLabels;
+$('#palBtn').onclick=()=>$('#palette').classList.toggle('open');
+$('#logBtn').onclick=()=>openPanel('#logPanel');
+$('#logClose').onclick=()=>$('#logPanel').classList.remove('show');
+$('#clockBtn').onclick=()=>{if(isTrainee())return;const r=!S.run;setClock({run:r});S.run=r;$('#clockBtn').setAttribute('aria-label',r?'暫停計時':'開始計時');log(r?'演練計時開始':'演練計時暫停','sys')};
+$('#copyLog').onclick=async()=>{const txt=`${SCEN[S.scen].name} 演練紀錄\n`+S.log.map(l=>`[${l.t}] ${l.who?l.who+'：':''}${l.text}`).join('\n')+`\n\n場景物件：\n`+[...entities.values()].map(e=>`${e.name}（${CATALOG[e.type].name}） @ ${e.obj.position.x.toFixed(0)}, ${e.obj.position.z.toFixed(0)}`).join('\n');
+  try{await navigator.clipboard.writeText(txt);flash('已複製紀錄，可貼到 AAR 表單')}catch(e){const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();flash('已複製紀錄，可貼到 AAR 表單')}};
+$('#saveBtn').onclick=()=>{const data={scen:S.scen,role:S.role,elapsed:S.elapsed,log:S.log,msel:S.msel,speed:S.speed,cam:camera.position.toArray(),tgt:controls.target.toArray(),
+  ents:[...entities.values()].map(e=>({type:e.type,name:e.name,x:e.obj.position.x,y:e.obj.position.y,z:e.obj.position.z,rot:e.obj.rotation.y,scale:e.scale,status:e.status||''}))};
+  try{localStorage.setItem('ics3d:save',JSON.stringify(data));flash('場景已儲存在這台裝置')}catch(e){flash('這個瀏覽器無法儲存，請改用複製紀錄')}};
+
+/* ---------- 場景變化（注入連動） ---------- */
+const fxGroup=new THREE.Group();scene.add(fxGroup);
+const tweens=[],timers=[];
+const P=(x,y,z)=>new THREE.Vector3(x,y,z);
+const ease=k=>1-Math.pow(1-k,3);
+function tween(ms,fn,done){tweens.push({t0:performance.now(),ms,fn,done})}
+function schedule(ms,fn,desc){timers.push({at:S.elapsed+ms,fn});log(`已排定 ${clockStr(S.elapsed+ms)}：${desc}`,'sys')}
+function runFx(){const now=performance.now();
+  for(let i=tweens.length-1;i>=0;i--){const tw=tweens[i];const k=Math.min(1,(now-tw.t0)/tw.ms);tw.fn(k);if(k>=1){tweens.splice(i,1);tw.done&&tw.done()}}
+  for(let i=timers.length-1;i>=0;i--){if(S.elapsed>=timers[i].at){const t=timers.splice(i,1)[0];t.fn()}}}
+function findEnt(type,has){const l=[...entities.values()].filter(e=>e.type===type&&(!has||e.name.includes(has)));return l[Math.floor(Math.random()*l.length)]||null}
+function renderLabel(e){e.label.innerHTML=esc(e.name)+(e.status?`<em>${esc(e.status)}</em>`:'');e.label.classList.toggle('alert',!!e.status)}
+function setStatus(e,txt){e.status=txt;renderLabel(e);push(e);if(S.sel===e.id)updateInspector();if(txt)log(`「${e.name}」狀態：${txt}`,'sys')}
+function pulse(p){const m=flat(new THREE.RingGeometry(.8,1.1,48),0xff2a2a,p.y+.12,.9);m.position.x=p.x;m.position.z=p.z;fxGroup.add(m);
+  tween(4500,k=>{const c=(k*3)%1;m.scale.setScalar(1+c*7);m.material.opacity=.9*(1-c)},()=>{fxGroup.remove(m);disposeObj(m)})}
+function flyTo(p,offArg){const off=offArg?offArg.clone():camera.position.clone().sub(controls.target);if(off.length()>48)off.setLength(48);
+  const t0=controls.target.clone(),c0=camera.position.clone(),t1=p.clone(),c1=p.clone().add(off);
+  tween(1400,k=>{const e=ease(k);controls.target.lerpVectors(t0,t1,e);camera.position.lerpVectors(c0,c1,e)})}
+const laneZ=()=>({tanker:4,crash:3}[S.scen]||2.5);
+function driveIn(type,name,tx,tz,delay=0,from='w'){const dir=from==='e'?-1:1,lane=dir*laneZ();const e=addEntity(type,tx-120*dir,lane,dir>0?0:Math.PI,name,1,true);const x0=e.obj.position.x,T=6500;push(e,T+delay,{x:tx,from:[x0,lane]});
+  tween(T+delay,k=>{const kk=Math.max(0,(k*(T+delay)-delay)/T);e.obj.position.x=x0+(tx-x0)*ease(kk)},()=>{
+    if(Math.abs(tz-lane)>.5){tween(1500,k=>{e.obj.position.z=lane+(tz-lane)*ease(k)});push(e,1500,{x:tx,z:tz})}log(`「${name}」抵達`,'sys')});return e}
+function firstWave(list){list.forEach(([t,n,x],i)=>driveIn(t,n,x,laneZ(),i*900));return P(list[0][2],0,laneZ())}
+function grow(type,mult){const e=findEnt(type);if(!e)return null;const s0=e.obj.scale.x,s1=s0*mult;push(e,3500,{scale:s1/(e.obj.userData.base||1)});tween(3500,k=>e.obj.scale.setScalar(s0+(s1-s0)*ease(k)),()=>{e.scale=s1});return e.obj.position.clone()}
+function fades(type,f){[...entities.values()].filter(e=>e.type===type).forEach(e=>{const s0=e.obj.scale.x,s1=Math.max(.01,s0*f);push(e,4000,{scale:s1/(e.obj.userData.base||1)});
+  tween(4000,k=>e.obj.scale.setScalar(s0+(s1-s0)*ease(k)),()=>{if(f===0)removeEntity(e.id,true);else e.scale=s1})})}
+function reinforce(){const s=findEnt('staging');const tx=s?s.obj.position.x:-24,tz=s?s.obj.position.z:laneZ();
+  driveIn('engine','第二梯次 水箱車',tx+3,tz);driveIn('amb','第二梯次 救護車',tx-6,tz,1200);return P(tx,0,tz)}
+function trafficJam(){const z=laneZ();
+  for(let i=0;i<7;i++){const end=-38-i*6.5,start=end-90;const e=addEntity('car',start,z,0,`回堵車輛 ${i+1}`,1,true);const T=5000+i*350;push(e,T,{x:end,from:[start,z]});
+    tween(T,k=>{e.obj.position.x=start+(end-start)*ease(k)})}return P(-55,0,z)}
+function setWind(a){const w=findEnt('wind')||addEntity('wind',-24,-22,0,null,1,true);const norm=d=>((d%(Math.PI*2))+Math.PI*3)%(Math.PI*2)-Math.PI;
+  const r0=w.obj.rotation.y,d=norm(a-r0);
+  const smokes=[...entities.values()].filter(e=>e.type==='smoke').map(e=>({e,r:e.obj.rotation.y,d:norm(a-e.obj.rotation.y)}));
+  push(w,2500,{rot:r0+d});smokes.forEach(s=>push(s.e,2500,{rot:s.r+s.d}));
+  tween(2500,k=>{const kk=ease(k);w.obj.rotation.y=r0+d*kk;smokes.forEach(s=>s.e.obj.rotation.y=s.r+s.d*kk)},()=>{if(S.sel===w.id)updateInspector()});return w.obj.position.clone()}
+function focusPoint(){const f=findEnt('fire')||findEnt('tankerOver')||findEnt('spill');return f?f.obj.position.clone():controls.target.clone().setY(0)}
+const GENERIC={
+  fireUp(){const f=findEnt('fire');if(!f){const p=controls.target.clone().setY(0);addEntity('fire',p.x,p.z,0,null,1,true);return p}const s0=f.obj.scale.x,s1=s0*1.5;push(f,3000,{scale:s1/(f.obj.userData.base||1)});tween(3000,k=>f.obj.scale.setScalar(s0+(s1-s0)*ease(k)),()=>{f.scale=s1});return f.obj.position.clone()},
+  smoke(){const p=focusPoint();const w=findEnt('wind');addEntity('smoke',p.x+1,p.z,w?w.obj.rotation.y:0,null,1.4,true,3);return p},
+  victim(){const p=focusPoint();const a=Math.random()*6.28;const e=addEntity('victim',p.x+Math.cos(a)*5,p.z+Math.sin(a)*5,a,null,1,true);return e.obj.position.clone()},
+  reinforce:()=>reinforce(),
+  wind(){const w=findEnt('wind');return setWind((w?w.obj.rotation.y:0)+Math.PI/4)}
+};
+$('#clrStatus').onclick=()=>{const e=entities.get(S.sel);if(e&&canEdit(e)){log(`「${e.name}」解除狀態：${e.status}`,'sys');setStatus(e,'')}};
+
+/* ---------- 狀況注入 ---------- */
+const dlg=$('#injDlg');
+$('#injectBtn').onclick=()=>{S.pendingFx=null;S.pendingIdx=null;$('#injChips').innerHTML=SCEN[S.scen].inj.map((o,i)=>`<button type="button" class="chip ${S.msel[i]==='done'?'done':''}" data-i="${i}">${o.at!=null?clockStr(o.at*1000)+'　':''}${o.t}</button>`).join('');$('#injText').value='';$('#injFx').value='none';dlg.showModal();if(matchMedia('(pointer:fine)').matches)$('#injText').focus()};
+$('#injChips').addEventListener('click',ev=>{const b=ev.target.closest('.chip');if(!b)return;const o=SCEN[S.scen].inj[+b.dataset.i];$('#injText').value=o.t;S.pendingFx=o.fx||null;S.pendingIdx=+b.dataset.i;$('#injFx').value=o.fx?'preset':'none'});
+$('#injCancel').onclick=()=>dlg.close();
+const resetScroll=()=>{if(window.scrollY||document.documentElement.scrollTop||document.body.scrollTop){window.scrollTo(0,0);document.documentElement.scrollTop=0;document.body.scrollTop=0}};
+dlg.addEventListener('close',()=>setTimeout(resetScroll,60));
+document.addEventListener('focusout',()=>setTimeout(resetScroll,100));
+if(window.visualViewport)window.visualViewport.addEventListener('resize',()=>setTimeout(resetScroll,100));
+$('#injSend').onclick=()=>{const t=$('#injText').value.trim();if(!t){$('#injText').focus();return}dlg.close();const mode=$('#injFx').value;const fx=mode==='preset'?S.pendingFx:GENERIC[mode];
+  if(mode==='preset'&&S.pendingIdx!=null&&$('#injText').value.trim()){S.msel[S.pendingIdx]='done';renderMsel()}
+  doInject(t,fx,$('#injCam').checked)};
+function doInject(text,fx,cam){log(`狀況注入：${text}`,'inject');const p=fx?fx():null;
+  if(NET.on)NET.ref.child('injects').push({text,p:p?[p.x,p.y,p.z]:null,by:CID,ts:firebase.database.ServerValue.TIMESTAMP});
+  showInject(text,p,cam)}
+function showInject(text,p,cam){showBanner(`狀況注入　${clockStr()}`,text,9000);if(p){pulse(p);if(cam)flyTo(p)}}
+function fireMsel(i){const o=SCEN[S.scen].inj[i];if(!o||S.msel[i]!=='wait')return;S.msel[i]='done';doInject(o.t,o.fx,S.role!=='ctrl'||$('#mselCam').checked);renderMsel()}
+function renderMsel(){const inj=SCEN[S.scen].inj,nx=S.msel.indexOf('wait');if(NET.on&&NET.host)NET.ref.child('msel').set(S.msel);
+  $('#mselList').innerHTML=inj.map((o,i)=>{const st=S.msel[i];return `<li class="${st}${i===nx?' next':''}"><span class="num">${o.at!=null?clockStr(o.at*1000):'—'}</span><span class="tx">${esc(o.t)}</span><span class="act">${st==='wait'?`<button type="button" class="tbtn" data-a="fire" data-i="${i}">立即發布</button><button type="button" class="tbtn" data-a="skip" data-i="${i}">略過</button>`:st==='skip'?`<span>已略過</span><button type="button" class="tbtn" data-a="undo" data-i="${i}">恢復</button>`:'已發布'}</span></li>`}).join('')}
+const mselNextEl=$('#mselNext');
+function autoMsel(){const inj=SCEN[S.scen].inj;let nx=-1;for(let i=0;i<inj.length;i++){if(S.msel[i]==='wait'&&inj[i].at!=null){nx=i;break}}
+  if(nx>=0&&S.run&&(S.role!=='ctrl'||$('#mselAuto').checked)&&S.elapsed>=inj[nx].at*1000)fireMsel(nx);
+  const lbl=nx<0?'腳本已全部發布':`下一則 ${clockStr(Math.max(0,inj[nx].at*1000-S.elapsed))}`;if(mselNextEl.textContent!==lbl)mselNextEl.textContent=lbl}
+$('#mselList').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;const i=+b.dataset.i,o=SCEN[S.scen].inj[i];
+  if(b.dataset.a==='fire')fireMsel(i);else if(b.dataset.a==='skip'){S.msel[i]='skip';log(`略過腳本：${o.t}`,'sys');renderMsel()}else{S.msel[i]='wait';renderMsel()}});
+$('#speed').addEventListener('change',ev=>{setClock({speed:+ev.target.value});log(`時間倍速 ${S.speed}×`,'sys')});
+function openPanel(id){['#logPanel','#mselPanel','#sessPanel','#tipPanel'].forEach(q=>{if(q!==id)$(q).classList.remove('show')});$(id).classList.toggle('show')}
+$('#mselBtn').onclick=()=>openPanel('#mselPanel');
+$('#mselClose').onclick=()=>$('#mselPanel').classList.remove('show');
+let bTimer;function showBanner(sm,txt,ms){const b=$('#banner');b.querySelector('small').textContent=sm;b.querySelector('strong').textContent=txt;b.classList.add('show');clearTimeout(bTimer);bTimer=setTimeout(()=>b.classList.remove('show'),ms)}
+function flash(t){showBanner('系統',t,2600)}
+
+/* ---------- 開始畫面 ---------- */
+$('#scenGrid').innerHTML=Object.entries(SCEN).map(([k,s])=>`<button type="button" class="scard ${k===S.scen?'on':''}" data-k="${k}" style="border-top-color:${s.top}"><b>${s.name}</b><span>${s.desc}</span></button>`).join('');
+$('#scenGrid').addEventListener('click',ev=>{const b=ev.target.closest('.scard');if(!b)return;S.scen=b.dataset.k;document.querySelectorAll('.scard').forEach(c=>c.classList.toggle('on',c===b))});
+function setRole(r){S.role=r;document.querySelectorAll('[data-role]').forEach(x=>x.classList.toggle('on',x.dataset.role===r));$('#ctrlBox').hidden=r!=='ctrl';$('#joinBox').hidden=r==='ctrl'}
+document.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>setRole(b.dataset.role));
+$('#hName').value=lsGet('ics3d:hname')||'';$('#jName').value=lsGet('ics3d:name')||'';if(lsGet('ics3d:pos'))$('#jPos').value=lsGet('ics3d:pos');
+const qsCode=new URLSearchParams(location.search).get('s');if(qsCode&&/^\d{4}$/.test(qsCode)){setRole('trainee');$('#jCode').value=qsCode}
+if(!fdb){['#hostBtn','#rejoinBtn','#joinBtn'].forEach(q=>$(q).disabled=true);$('#netNote').textContent=location.protocol==='file:'?'請把檔案放到 GitHub Pages 再開啟，才能使用連線場次；目前只能單機演練。':'尚未在檔案中設定 Firebase，目前只能單機演練。'}
+function busy(b,on){b.disabled=on;b.dataset.t=b.dataset.t||b.textContent;b.textContent=on?'連線中…':b.dataset.t}
+$('#hostBtn').onclick=async()=>{const name=$('#hName').value.trim();if(!name){$('#hName').focus();flash('請先輸入教官姓名');return}lsSet('ics3d:hname',name);const b=$('#hostBtn');busy(b,true);
+  try{let code=null;for(let i=0;i<12&&!code;i++){const c=String(Math.floor(1000+Math.random()*9000));const ex=await fdb.ref('sessions/'+c+'/meta').once('value');if(!ex.exists())code=c}
+    if(!code)throw new Error('無法產生房號');
+    leaveSession(true);NET.code=code;NET.ref=fdb.ref('sessions/'+code);NET.host=true;NET.me={name,pos:'教官',label:`教官 ${name}`};lsSet('ics3d:host:'+code,'1');
+    NET.meta={scen:S.scen,run:false,base:0,startAt:0,speed:1,hostName:name,created:Date.now()};
+    await NET.ref.child('meta').set(NET.meta);NET.on=true;S.role='ctrl';
+    launch(null,{online:true});attach();openPanel('#sessPanel')}
+  catch(err){console.error(err);flash('建立場次失敗，請確認網路與 Firebase 設定')}finally{busy(b,false)}};
+async function joinSession(code,asHost,btn){if(!/^\d{4}$/.test(code)){flash('房號是 4 位數字');return}busy(btn,true);
+  try{const ref=fdb.ref('sessions/'+code);const m=(await ref.child('meta').once('value')).val();if(!m){flash('找不到這個房號，請向教官確認');return}
+    leaveSession(true);NET.code=code;NET.ref=ref;NET.host=asHost;NET.meta=m;S.scen=SCEN[m.scen]?m.scen:'blank';S.role=asHost?'ctrl':'trainee';
+    if(asHost){const nm=lsGet('ics3d:hname')||m.hostName||'教官';NET.me={name:nm,pos:'教官',label:`教官 ${nm}`};const ms=(await ref.child('msel').once('value')).val();S._msel=Array.isArray(ms)?ms:null}
+    else{const nm=$('#jName').value.trim(),pos=$('#jPos').value;NET.me={name:nm,pos,label:`${nm}（${pos}）`}}
+    NET.on=true;launch(null,{online:true,join:true});attach();if(asHost)openPanel('#sessPanel')}
+  catch(err){console.error(err);flash('連線失敗，請確認網路')}finally{busy(btn,false)}}
+$('#joinBtn').onclick=()=>{const name=$('#jName').value.trim();if(!name){$('#jName').focus();flash('請輸入姓名');return}lsSet('ics3d:name',name);lsSet('ics3d:pos',$('#jPos').value);joinSession($('#jCode').value.trim(),false,$('#joinBtn'))};
+$('#rejoinBtn').onclick=()=>{const c=$('#rejoinCode').value.trim();if(!lsGet('ics3d:host:'+c)){flash('這台裝置不是建立這個場次的裝置');return}joinSession(c,true,$('#rejoinBtn'))};
+$('#soloBtn').onclick=()=>{leaveSession(true);launch(null)};
+function attach(){const r=NET.ref;
+  r.child('ents').on('child_added',s=>applyRemote(s.key,s.val()));
+  r.child('ents').on('child_changed',s=>applyRemote(s.key,s.val()));
+  r.child('ents').on('child_removed',s=>{applying=true;try{removeEntity(s.key,true)}finally{applying=false}});
+  r.child('log').on('child_added',s=>{S.log.push(s.val());renderLog()});
+  NET.injQ=r.child('injects').orderByChild('ts').startAt(serverNow()-1000);
+  NET.injQ.on('child_added',s=>{const v=s.val();if(!v||v.by===CID)return;showInject(v.text,v.p?P(v.p[0],v.p[1],v.p[2]):null,$('#followCam').checked)});
+  r.child('meta').on('value',s=>{if(!s.exists()){if(NET.on)sessionEnded();return}NET.meta=s.val()});
+  r.child('players').on('value',s=>{NET.players=s.val()||{};renderRoster();if(S.sel)updateInspector();renderSceneList()});
+  const me=r.child('players/'+CID);me.set({name:NET.me.name,pos:NET.me.pos,host:NET.host,ts:firebase.database.ServerValue.TIMESTAMP});me.onDisconnect().remove();
+  const url=location.origin+location.pathname+'?s='+NET.code;
+  $('#sessCode').textContent=NET.code;$('#bigCode').textContent=NET.code;$('#sessUrl').textContent=url;$('#sessBtn').style.display='';
+  $('#qr').innerHTML='';if(typeof QRCode!=='undefined')new QRCode($('#qr'),{text:url,width:180,height:180,correctLevel:QRCode.CorrectLevel.M});else $('#qr').style.display='none';
+  $('#endSess').style.display=NET.host?'':'none';
+  $('#clockBtn').style.display=NET.host?'':'none';
+  flash(NET.host?`場次 ${NET.code} 已建立，請學員掃描 QR Code 加入`:`已加入場次 ${NET.code}`)}
+function leaveSession(silent){if(!NET.ref){NET.on=false;return}const r=NET.ref;
+  ['ents','log','meta','players'].forEach(k=>r.child(k).off());if(NET.injQ)NET.injQ.off();
+  if(NET.on){const me=r.child('players/'+CID);me.onDisconnect().cancel();me.remove()}
+  NET.on=false;NET.ref=null;NET.code=null;NET.host=false;NET.players={};NET.meta=null;
+  $('#sessBtn').style.display='none';$('#sessPanel').classList.remove('show');$('#clockBtn').style.display=''}
+function sessionEnded(){leaveSession(true);showBanner('系統','教官已結束這個場次',6000);setTimeout(()=>$('#start').classList.remove('hide'),1500)}
+function renderRoster(){const list=Object.entries(NET.players).sort((a,b)=>(b[1].host?1:0)-(a[1].host?1:0));$('#pCount').textContent=list.length;
+  $('#roster').innerHTML=list.map(([k,v])=>{const n=[...entities.values()].filter(e=>e.owner===k).length;
+    return `<li>${v.host?'<span class="badge">教官</span>':''}<span>${esc(v.name)}${v.host?'':`（${esc(v.pos)}）`}${k===CID?'・我':''}</span><small>${v.host?'':`負責 ${n} 項`}</small></li>`}).join('')}
+$('#sessBtn').onclick=()=>openPanel('#sessPanel');
+$('#sessClose').onclick=()=>$('#sessPanel').classList.remove('show');
+$('#copyUrl').onclick=async()=>{const t=$('#sessUrl').textContent;try{await navigator.clipboard.writeText(t);flash('已複製加入連結')}catch(e){flash(t)}};
+$('#leaveBtn').onclick=()=>{if(!confirm('離開這個場次？之後可以用房號再加入。'))return;leaveSession();$('#start').classList.remove('hide')};
+$('#endSess').onclick=async()=>{if(!NET.host)return;if(!confirm('結束後所有人都會離線，場次資料也會刪除。建議先到「紀錄」複製 AAR。確定結束？'))return;
+  const r=NET.ref;leaveSession(true);try{await r.remove()}catch(e){}$('#start').classList.remove('hide')};
+let saved=null;try{saved=JSON.parse(localStorage.getItem('ics3d:save')||'null')}catch(e){}
+if(saved&&SCEN[saved.scen])$('#resumeBtn').style.display='';
+$('#goBtn').onclick=()=>{leaveSession(true);launch(null)};
+$('#resumeBtn').onclick=()=>{leaveSession(true);launch(saved)};
+$('#homeBtn').onclick=()=>{if(NET.on){openPanel('#sessPanel');return}setClock({run:false});$('#start').classList.remove('hide')};
+
+function launch(data,opt={}){
+  tweens.length=0;timers.length=0;fxGroup.clear();
+  cancelPlacing();select(null);applying=true;try{[...entities.keys()].forEach(id=>removeEntity(id,true))}finally{applying=false}for(const k in counters)delete counters[k];
+  envGroup.children.slice().forEach(o=>{envGroup.remove(o)});
+  if(data){S.scen=data.scen;S.role=data.role||S.role}
+  S.bld=null;S.view=null;const sc=SCEN[S.scen];sc.env();$('#floorNav').classList.toggle('show',!!S.bld);document.querySelectorAll('#floorNav button').forEach(x=>x.classList.toggle('on',x.dataset.f==='ext'));
+  S.clock={run:false,base:data?data.elapsed||0:0,startAt:0,speed:(data&&data.speed)||1};S.run=false;S.elapsed=S.clock.base;S.log=(!opt.online&&data)?data.log||[]:[];
+  const ms0=opt.online?S._msel:(data&&data.msel);S._msel=null;S.msel=(ms0&&ms0.length===sc.inj.length)?ms0:sc.inj.map(()=>'wait');S.speed=(clockObj().speed)||1;$('#speed').value=String(S.speed);renderMsel();
+  $('#mselBtn').style.display=S.role==='ctrl'?'':'none';$('#mselPanel').classList.remove('show');
+  if(data){data.ents.forEach(e=>{const n=addEntity(e.type,e.x,e.z,e.rot,e.name,e.scale||1,true,e.y||0);if(n&&e.status){n.status=e.status;renderLabel(n)}});camera.position.fromArray(data.cam);controls.target.fromArray(data.tgt)}
+  else{if(!opt.join){sc.init.forEach(([t,x,z,r=0,n=null,s=1,y=0])=>addEntity(t,x,z,r,n,s,true,y));log(`載入情境：${sc.name}`+(opt.online?`（連線場次 ${NET.code}）`:`（${S.role==='ctrl'?'主控':'學員'}）`),'sys')}
+    else log(opt.online&&!NET.host?'加入場次':'回到場次','sys');camera.position.set(...sc.cam);controls.target.set(...sc.tgt)}
+  renderLog();
+  $('#scenName').textContent=`${sc.name}・${NET.on?(NET.host?'教官':NET.me.label):(S.role==='ctrl'?'主控':'學員')}`;
+  $('#injectBtn').style.display=S.role==='ctrl'?'':'none';$('#tipBtn').style.display=S.role==='ctrl'?'':'none';if(S.role!=='ctrl')$('#tipPanel').classList.remove('show');
+  if(S.role!=='ctrl'&&S.cat==='env')S.cat='all';
+  renderTabs();renderItems();renderSceneList();
+  $('#start').classList.add('hide');controls.update()}
+
+/* ---------- 主迴圈 ---------- */
+function resize(){const w=stageEl.clientWidth,h=stageEl.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+window.addEventListener('resize',resize);resize();
+const clockBtnEl=$('#clockBtn');const clk=new THREE.Clock(),fwd=new THREE.Vector3(),rgt=new THREE.Vector3(),mv=new THREE.Vector3();
+function loop(){requestAnimationFrame(loop);const dt=Math.min(clk.getDelta(),.05),t=clk.elapsedTime;
+  S.run=!!clockObj().run;S.elapsed=calcElapsed();{const l=S.run?'❚❚':'▶';if(clockBtnEl.textContent!==l)clockBtnEl.textContent=l}
+  runFx();if(!NET.on||NET.host)autoMsel();
+  $('#clockTime').textContent=clockStr();
+  // WASD 平移
+  mv.set(0,0,0);camera.getWorldDirection(fwd);fwd.y=0;fwd.normalize();rgt.crossVectors(fwd,camera.up).normalize();
+  if(keys.w)mv.add(fwd);if(keys.s)mv.sub(fwd);if(keys.d)mv.add(rgt);if(keys.a)mv.sub(rgt);
+  if(keys.q||keys.e){const y=(keys.e?1:-1)*20*dt;camera.position.y=Math.max(3,camera.position.y+y)}
+  if(mv.lengthSq()){const sp=Math.max(10,camera.position.distanceTo(controls.target)*.9)*dt*(keys.shift?2.5:1);mv.normalize().multiplyScalar(sp);camera.position.add(mv);controls.target.add(mv)}
+  controls.update();
+  entities.forEach(e=>{if(e.obj.userData.anim)e.obj.userData.anim(t)});
+  if(S.ghost&&S.ghost.userData.anim)S.ghost.userData.anim(t);
+  if(S.bld)entities.forEach(e=>{e.obj.visible=S.view==null||e.obj.position.y<=S.view*HB.H+.5});
+  const se=entities.get(S.sel);if(se){selRing.visible=se.obj.visible;selRing.position.set(se.obj.position.x,se.obj.position.y+.3,se.obj.position.z)}
+  // 標籤
+  const w=stageEl.clientWidth,h=stageEl.clientHeight;
+  entities.forEach(e=>{tmpV.copy(e.obj.position);tmpV.y+=e.h+.5;const d=camera.position.distanceTo(tmpV);tmpV.project(camera);
+    if(!S.labels||!e.obj.visible||tmpV.z>1||d>170){e.label.style.display='none';return}
+    e.label.style.display='';e.label.style.transform=`translate(${((tmpV.x*.5+.5)*w).toFixed(1)}px,${((-tmpV.y*.5+.5)*h).toFixed(1)}px) translate(-50%,-100%)`});
+  renderer.render(scene,camera)}
+/* ---------- 登入／權限／跑馬燈／意見回饋 ---------- */
+/* 貼上 Google Apps Script「網頁應用程式」部署網址（結尾為 /exec）。留空則只能單機試用。 */
+const GAS_URL='https://script.google.com/macros/s/AKfycbytoQOD-VRApeZ_h46N1jVQVxl7JVxEzr4pmvGjXcqEsUsthrNsjKS8Wjyu67h2JO5ALQ/exec';
+const AUTH={user:null,token:''};
+const ssGet=k=>{try{return sessionStorage.getItem(k)}catch(e){return null}};
+const ssSet=(k,v)=>{try{sessionStorage.setItem(k,v)}catch(e){}};
+const ssDel=k=>{try{sessionStorage.removeItem(k)}catch(e){}};
+async function gas(body){const r=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});return r.json()}
+const ROLE_NAME={admin:'管理員',ins:'教官',tr:'學員'};
+function roleKey(zh){return zh==='管理員'?'admin':zh==='教官'?'ins':'tr'}
+async function loadMarquee(){
+  if(!GAS_URL)return;
+  try{const r=await fetch(GAS_URL+'?action=marquee');const j=await r.json();const items=(j&&j.items)||[];
+    if(!items.length)return;const m=$('#marq');m.querySelector('span').textContent=items.join('　　◆　　');m.style.setProperty('--mqs',(j.speed||30)+'s');m.hidden=false}
+  catch(err){console.error(err)}}
+function applyView(v){
+  const ins=v==='ins',u=AUTH.user;
+  document.querySelector('[data-role="ctrl"]').style.display=(ins||u.key==='admin')?'':'none';
+  document.querySelector('[data-role="trainee"]').style.display=(!ins||u.key==='admin')?'':'none';
+  setRole(ins?'ctrl':'trainee');
+  const lock=u.key!=='admin';
+  $('#hName').value=u.name;$('#jName').value=u.name;$('#hName').readOnly=lock;$('#jName').readOnly=lock}
+function enterApp(user,token){
+  user.key=roleKey(user.role);AUTH.user=user;AUTH.token=token||'';
+  $('#login').classList.add('hide');$('#lPass').value='';
+  $('#userBtn').style.display='';$('#userBtn').textContent=`${user.name}（${user.role}）`;
+  applyView(user.key==='tr'?'tr':'ins')}
+$('#loginForm').addEventListener('submit',async ev=>{ev.preventDefault();
+  const u=$('#lUser').value.trim(),p=$('#lPass').value,b=$('#lBtn'),msg=$('#lMsg');msg.textContent='';
+  if(!GAS_URL){msg.textContent='尚未設定登入服務，請管理員先完成部署。';return}
+  if(!u||!p){msg.textContent='請輸入帳號與密碼';return}
+  busy(b,true);
+  try{const r=await gas({type:'login',u,p});
+    if(r.ok){ssSet('ics3d:tok',r.token);enterApp({acct:r.acct,name:r.name,role:r.role},r.token)}else msg.textContent=r.err||'登入失敗'}
+  catch(err){console.error(err);msg.textContent='連線失敗，請確認網路後再試'}finally{busy(b,false)}});
+if(!GAS_URL){$('#lMsg').textContent='尚未設定登入服務（GAS_URL）。';$('#lDemo').hidden=false}
+$('#lDemo').onclick=()=>enterApp({acct:'demo',name:'示範',role:'管理員'},'');
+(async()=>{const tok=ssGet('ics3d:tok');if(GAS_URL&&tok){try{const r=await gas({type:'verify',token:tok});if(r.ok)enterApp({acct:r.acct,name:r.name,role:r.role},tok);else ssDel('ics3d:tok')}catch(err){console.error(err)}}})();
+loadMarquee();
+/* 使用者選單 */
+$('#userBtn').onclick=()=>{const u=AUTH.user;$('#uTitle').textContent=`${u.name}（${u.role}）`;
+  $('#uInfo').textContent=u.key==='admin'?'管理員可在教官與學員視角之間切換。切換時會回到首頁。':'';
+  $('#uViewIns').style.display=$('#uViewTr').style.display=u.key==='admin'?'':'none';$('#userDlg').showModal()};
+$('#uClose').onclick=()=>$('#userDlg').close();
+$('#uOut').onclick=()=>{ssDel('ics3d:tok');leaveSession(true);location.reload()};
+function switchView(v){if(NET.on&&!confirm('切換視角需先離開目前連線場次，是否離開？'))return;leaveSession(true);setClock({run:false});applyView(v);$('#start').classList.remove('hide');$('#userDlg').close()}
+$('#uViewIns').onclick=()=>switchView('ins');$('#uViewTr').onclick=()=>switchView('tr');
+$('#tipBtn').onclick=()=>openPanel('#tipPanel');$('#tipClose').onclick=()=>$('#tipPanel').classList.remove('show');
+/* 意見回饋 */
+let fbId=null;
+$('#uFb').onclick=()=>{$('#userDlg').close();if(!AUTH.token){flash('單機試用模式無法送出意見回饋');return}$('#fbDlg').showModal()};
+$('#fbCancel').onclick=()=>$('#fbDlg').close();
+$('#fbSend').onclick=async()=>{const b=$('#fbSend'),r1=$('#fb1').value,r2=$('#fb2').value,r3=$('#fb3').value,text=$('#fbText').value.trim();
+  if(!r1&&!r2&&!r3&&!text){flash('請至少填寫一項');return}
+  fbId=fbId||(Date.now()+'-'+Math.random().toString(36).slice(2,8));busy(b,true);
+  try{const r=await gas({type:'feedback',token:AUTH.token,id:fbId,r1,r2,r3,text,session:NET.code||'',scen:SCEN[S.scen]?SCEN[S.scen].name:''});
+    if(r.ok){$('#fbDlg').close();['#fb1','#fb2','#fb3','#fbText'].forEach(q=>$(q).value='');fbId=null;flash('謝謝您的意見回饋')}else flash(r.err||'送出失敗，內容已保留，請稍後再試')}
+  catch(err){console.error(err);flash('連線失敗，內容已保留，請稍後再試')}finally{busy(b,false)}};
+renderTabs();renderItems();renderSceneList();loop();
+})();
+</script>
+</body>
+</html>
