@@ -392,6 +392,8 @@ body.net-trainee #palette,body.net-trainee #palBtn{display:none!important}
 
   <dialog id="fbDlg">
     <h2 tabindex="-1" autofocus>意見回饋</h2>
+    <label for="fbName">姓名（必填）</label><input id="fbName" maxlength="20" autocomplete="off">
+    <label for="fbUnit">單位（必填，例：成功分隊）</label><input id="fbUnit" maxlength="30" autocomplete="off">
     <label for="fb1">學習收穫（1 最低、5 最高）</label><select id="fb1"><option value="">請選擇</option><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select>
     <label for="fb2">操作是否容易</label><select id="fb2"><option value="">請選擇</option><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select>
     <label for="fb3">演練是否貼近實務</label><select id="fb3"><option value="">請選擇</option><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select>
@@ -1329,13 +1331,14 @@ $('#uViewIns').onclick=()=>switchView('ins');$('#uViewTr').onclick=()=>switchVie
 $('#tipBtn').onclick=()=>openPanel('#tipPanel');$('#tipClose').onclick=()=>$('#tipPanel').classList.remove('show');
 /* 意見回饋 */
 let fbId=null;
-$('#uFb').onclick=()=>{$('#userDlg').close();if(!AUTH.token){flash('訪客或單機試用模式無法送出意見回饋，請登入後再填');return}$('#fbDlg').showModal()};
+$('#uFb').onclick=()=>{$('#userDlg').close();if(AUTH.token&&!$('#fbName').value)$('#fbName').value=AUTH.user.name||'';$('#fbDlg').showModal()};
 $('#fbCancel').onclick=()=>$('#fbDlg').close();
-$('#fbSend').onclick=async()=>{const b=$('#fbSend'),r1=$('#fb1').value,r2=$('#fb2').value,r3=$('#fb3').value,text=$('#fbText').value.trim();
+$('#fbSend').onclick=async()=>{const b=$('#fbSend'),r1=$('#fb1').value,r2=$('#fb2').value,r3=$('#fb3').value,text=$('#fbText').value.trim(),fname=$('#fbName').value.trim(),funit=$('#fbUnit').value.trim();
+  if(!fname||!funit){flash('請填寫姓名與單位');return}
   if(!r1&&!r2&&!r3&&!text){flash('請至少填寫一項');return}
   fbId=fbId||(Date.now()+'-'+Math.random().toString(36).slice(2,8));busy(b,true);
-  try{const r=await gas({type:'feedback',token:AUTH.token,id:fbId,r1,r2,r3,text,session:NET.code||'',scen:SCEN[S.scen]?SCEN[S.scen].name:''});
-    if(r.ok){$('#fbDlg').close();['#fb1','#fb2','#fb3','#fbText'].forEach(q=>$(q).value='');fbId=null;flash('謝謝您的意見回饋')}else flash(r.err||'送出失敗，內容已保留，請稍後再試')}
+  try{const r=await gas({type:'feedback',token:AUTH.token,id:fbId,r1,r2,r3,text,fname,funit,session:NET.code||'',scen:SCEN[S.scen]?SCEN[S.scen].name:''});
+    if(r.ok){$('#fbDlg').close();['#fb1','#fb2','#fb3','#fbText','#fbUnit'].forEach(q=>$(q).value='');fbId=null;flash('謝謝您的意見回饋')}else flash(r.err||'送出失敗，內容已保留，請稍後再試')}
   catch(err){console.error(err);flash('連線失敗，內容已保留，請稍後再試')}finally{busy(b,false)}};
 /* 場景模組：存在 Google 試算表，教官按需載入；新增需驗證碼（驗證在試算表端） */
 const modOk=()=>{if(!AUTH.token){flash('單機試用模式無法使用模組');return false}return true};
