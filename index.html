@@ -264,6 +264,7 @@ html,body{touch-action:manipulation}
     <button type="button" class="tbtn" id="injectBtn">狀況注入</button>
     <button type="button" class="tbtn" id="mselBtn">腳本</button>
     <button type="button" class="tbtn" id="logBtn">紀錄</button>
+    <button type="button" class="tbtn" id="nightBtn" title="切換白天／夜間（連線時由教官切換）">白天</button>
     <button type="button" class="tbtn hide-m on" id="labelBtn">標籤</button>
     <button type="button" class="tbtn" id="modSaveBtn" style="display:none">存成模組</button>
     <button type="button" class="tbtn" id="tipBtn" style="display:none">教官提示</button>
@@ -501,6 +502,7 @@ html,body{touch-action:manipulation}
           <li><b>洩漏範圍、綠色蒸氣雲</b>：調整範圍大小。</li>
           <li><b>射水（直線、霧狀）、泡沫、固定式砲塔</b>：調整射程與水壓。</li>
           <li><b>水線</b>：物件位置是起點，按「設定終點」再點地面指定終點；拖曳水線或按方向鍵移動的是起點，終點不動。</li>
+          <li><b>照明燈組、照明車</b>（應變類）：搭配上方「白天／夜間」按鈕使用。切到夜間後畫面變暗，燈具會在地面投出亮區；可調照明範圍，也可取消勾選「開啟照明」模擬斷電。連線時日夜由教官切換，學員同步。發電機可放在旁邊示意供電。</li>
           <li><b>水箱車、水庫車（僅教官可調）</b>：用滑桿設定剩餘水量（水箱車以 3,000 公升、水庫車以 10,000 公升為滿水），調整後畫面會出現「狀況注入」通知所有人；學員只看得到名牌上的水量百分比。</li>
         </ul>
         <h3>小提醒</h3>
@@ -548,11 +550,15 @@ scene.fog=new THREE.Fog(0xb3c1cd,140,360);
 const camera=new THREE.PerspectiveCamera(50,1,0.5,1200);
 const controls=new THREE.OrbitControls(camera,renderer.domElement);
 controls.enableDamping=true;controls.maxPolarAngle=Math.PI*0.48;controls.minDistance=5;controls.maxDistance=240;
-scene.add(new THREE.HemisphereLight(0xe3ebf2,0x4a5240,0.8));
+const hemi=new THREE.HemisphereLight(0xe3ebf2,0x4a5240,0.8);scene.add(hemi);
 const sun=new THREE.DirectionalLight(0xffffff,0.85);
 sun.position.set(45,80,30);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
 Object.assign(sun.shadow.camera,{left:-80,right:80,top:80,bottom:-80,far:220});
 scene.add(sun);
+let NIGHT=false;
+const DAYK={bg:0xb3c1cd,hemi:.8,sun:.85,hc:0xe3ebf2,sc:0xffffff},NGTK={bg:0x0a1020,hemi:.34,sun:.18,hc:0x7088bc,sc:0x8fa6d8};
+function applyNight(on){NIGHT=!!on;const k=NIGHT?NGTK:DAYK;scene.background.setHex(k.bg);scene.fog.color.setHex(k.bg);hemi.intensity=k.hemi;hemi.color.setHex(k.hc);sun.intensity=k.sun;sun.color.setHex(k.sc);
+  const b=document.getElementById('nightBtn');if(b){b.classList.toggle('on',NIGHT);b.textContent=NIGHT?'夜間':'白天'}}
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(800,800),new THREE.MeshStandardMaterial({color:0x6c7a59,roughness:1}));
 ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
 const envGroup=new THREE.Group();scene.add(envGroup);
@@ -667,6 +673,7 @@ function initPrm(e){const d=CATALOG[e.type],o=e.obj,p={};
   if(d.task)p.task='';
   if(d.tank)p.water=100;
   if(d.dens)p.dens=1;
+  if(d.light)p.on=true;
   if(o.userData.jp)Object.assign(p,{reach:o.userData.jp.L0,press:1});
   if(e.type==='hose')Object.assign(p,{ex:Math.round((o.position.x+19)*100)/100,ez:o.position.z});
   if(Object.keys(p).length)e.prm=p}
@@ -674,6 +681,7 @@ function applyPrm(e){const p=e.prm||{},o=e.obj;
   if(e.type==='zones')rebuildZone(e);
   if(CATALOG[e.type].attire)setAttire(e);
   if(p.dens!=null)o.userData.dens=p.dens;
+  if(CATALOG[e.type].light)o.userData.lit=p.on!==false;
   if(o.userData.jp&&p.reach!=null){o.userData.jp.L=p.reach;o.userData.jp.pr=p.press||1}
   if(e.type==='hose')e._hk=null;
   airS=-1;renderLabel(e)}
@@ -864,6 +872,40 @@ function rebuildHose(e){const o=e.obj,p=e.prm;if(!p||p.ex==null)return;[...o.chi
   for(let i=0;i<=8;i++){const t=i/8,off=Math.sin(t*Math.PI*3)*Math.min(1.2,L*.05)*Math.sin(t*Math.PI),wx=dx*t+nx*off,wz=dz*t+nz*off;
     pts.push(new THREE.Vector3(wx*cs-wz*sn,.1,wx*sn+wz*cs))}
   hoseTube(pts).children.slice().forEach(c=>o.add(c));e.r=2}
+
+/* 夜間照明：腳架照明燈、照明車（桅燈）、發電機。光暈用貼地的發光圓與半透明光束呈現（不增加真實光源，手機也順） */
+let glowTex=null;
+function glowTexture(){if(glowTex)return glowTex;const cv=document.createElement('canvas');cv.width=cv.height=128;const x=cv.getContext('2d'),gr=x.createRadialGradient(64,64,0,64,64,64);
+  gr.addColorStop(0,'rgba(255,244,205,1)');gr.addColorStop(.55,'rgba(255,230,160,.55)');gr.addColorStop(1,'rgba(255,220,140,0)');x.fillStyle=gr;x.fillRect(0,0,128,128);glowTex=new THREE.CanvasTexture(cv);return glowTex}
+function lightPool(r,x=0,z=0,sx=1){const m=new THREE.Mesh(new THREE.CircleGeometry(r,40),new THREE.MeshBasicMaterial({map:glowTexture(),transparent:true,opacity:.2,depthWrite:false,blending:THREE.AdditiveBlending}));
+  m.rotation.x=-Math.PI/2;m.position.set(x,.06,z);m.scale.set(sx,1,1);m.raycast=()=>{};return m}
+function lightBeam(from,to,rad){const d=to.clone().sub(from),len=d.length(),geo=new THREE.ConeGeometry(rad,len,20,1,true);geo.translate(0,-len/2,0);
+  const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0xfff2c0,transparent:true,opacity:.05,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide}));
+  m.position.copy(from);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,-1,0),d.normalize());m.raycast=()=>{};return m}
+const lensMat=()=>new THREE.MeshBasicMaterial({color:0xfff2c0});
+function lampAnim(g,pools,beams,lenses){return()=>{const on=g.userData.lit!==false;
+  pools.forEach(p=>p.material.opacity=on?(NIGHT?.9:.22):0);beams.forEach(b=>b.material.opacity=on?(NIGHT?.2:.05):0);lenses.forEach(l=>l.color.setHex(on?0xfff2c0:0x4a4f55))}}
+Object.assign(CATALOG,{
+  lightTripod:{cat:'res',name:'照明燈組（腳架）',build(){const g=new THREE.Group(),dk=mat(0x30363c),lens=lensMat();
+    for(let i=0;i<3;i++){const a=i*2.094,l=cyl(.03,.03,2.4,0x59636d,Math.cos(a)*.45,1.1,Math.sin(a)*.45,6);l.rotation.z=Math.cos(a)*.2;l.rotation.x=-Math.sin(a)*.2;g.add(l)}
+    g.add(cyl(.045,.045,1.5,0x59636d,0,2.7,0,8));
+    const hd=new THREE.Group();hd.position.set(0,3.4,0);hd.rotation.z=-.5;hd.add(box(.22,.4,.52,dk,0,0,0));const lz=new THREE.Mesh(new THREE.BoxGeometry(.03,.34,.46),lens);lz.position.x=.12;hd.add(lz);g.add(hd);
+    const tgt=new THREE.Vector3(6.5,0,0),pool=lightPool(5,6.5,0,1.35),beam=lightBeam(new THREE.Vector3(.15,3.35,0),tgt,3.6);g.add(pool,beam);
+    g.userData.anim=lampAnim(g,[pool],[beam],[lz.material]);return g},noShadow:true,h:4,selR:1.6,light:true,size:{label:'照明範圍',min:.5,max:2.5}},
+  lightTower:{cat:'res',name:'照明車（桅燈）',build(){const g=truck({len:7,w:2.4,h:2.5,color:0xe8e8e4,stripe:0xd6e548}),lens=lensMat(),dk=mat(0x30363c);
+    g.add(cyl(.1,.14,6,0x59636d,-1.8,5.5,0,8));
+    const top=new THREE.Vector3(-1.8,8.7,0),pools=[lightPool(15,-1.8,0)],beams=[],lz=[];g.add(pools[0]);
+    g.add(box(.9,.22,.9,dk,top.x,top.y,top.z));
+    for(let k=0;k<4;k++){const a=k*Math.PI/2,c=Math.cos(a),sn=Math.sin(a);
+      const l=new THREE.Mesh(new THREE.BoxGeometry(.06,.5,.5),lens);l.position.set(top.x+c*.5,top.y-.1,top.z+sn*.5);l.rotation.y=-a;g.add(l);lz.push(l);
+      const b=lightBeam(new THREE.Vector3(top.x+c*.5,top.y-.1,top.z+sn*.5),new THREE.Vector3(top.x+c*10,0,top.z+sn*10),4.5);g.add(b);beams.push(b)}
+    g.userData.anim=lampAnim(g,pools,beams,[lens]);return g},noShadow:false,h:9.4,selR:4.5,light:true,size:{label:'照明範圍',min:.5,max:2}},
+  genset:{cat:'res',name:'發電機',build(){const g=new THREE.Group();
+    g.add(box(1.6,.95,.9,0xd8861a,0,.62,0));g.add(box(1.2,.5,.04,0x2b2f33,0,.7,.47));
+    g.add(cyl(.05,.05,.5,0x59636d,.5,1.35,-.2,8));for(const x of[-.7,.7])g.add(box(.1,.14,.8,0x2b2f33,x,.07,0));
+    const sg=new THREE.Mesh(new THREE.PlaneGeometry(1,.26),new THREE.MeshBasicMaterial({map:textTex('發電機','#2b2f33','#fff',256,66,40)}));sg.position.set(0,.7,.49);g.add(sg);
+    const cb=new THREE.Mesh(new THREE.TorusGeometry(.35,.04,6,20),mat(0x222222));cb.rotation.x=Math.PI/2;cb.position.set(-1.3,.08,.5);g.add(cb);return g},h:2}
+});
 
 /* ---------- 情境 ---------- */
 function road(w,z=0){
@@ -1066,7 +1108,7 @@ function addEntity(type,x,z,rot=0,name=null,scale=1,quiet=false,y=0,idArg=null){
   const label=document.createElement('div');label.className='tag3d';label.dataset.cat=def.cat;
   const nm=name||`${def.name} ${[...entities.values()].filter(x=>x.type===type).length+1}`;label.textContent=nm;labelsEl.appendChild(label);
   const bb=new THREE.Box3().setFromObject(obj);
-  const e={id,type,name:nm,obj,label,scale,h:def.h||Math.max(.8,bb.max.y),r:Math.max(1,Math.hypot(bb.max.x-bb.min.x,bb.max.z-bb.min.z)/2)};
+  const e={id,type,name:nm,obj,label,scale,h:def.h||Math.max(.8,bb.max.y),r:def.selR||Math.max(1,Math.hypot(bb.max.x-bb.min.x,bb.max.z-bb.min.z)/2)};
   e.owner=(!applying&&isTrainee())?CID:'';
   initPrm(e);entities.set(id,e);obj.position.y=y;renderSceneList();
   if(!applying)push(e);
@@ -1209,6 +1251,7 @@ function renderPrm(e){const el=$('#prmRow');if(!e){el.innerHTML='';return}
   const d=CATALOG[e.type],p=e.prm||{};let h='';
   if(d.attire)h+=`<div class="fxrow"><label for="prAttire">著裝層級</label><select id="prAttire">${ATTIRES.map(a=>`<option${a===p.attire?' selected':''}>${a}</option>`).join('')}</select></div>`;
   if(p.attire==='SCBA')h+=`<div class="fxrow"><span id="airInfo">${airText(e)}</span><button type="button" class="tbtn" data-act="airReset">更換空氣瓶</button></div>`;
+  if(d.light)h+=`<div class="fxrow"><label style="display:flex;gap:6px;align-items:center;color:var(--ink)"><input type="checkbox" id="prOn" ${p.on!==false?'checked':''}> 開啟照明</label></div>`;
   if(d.task)h+=`<div class="fxrow"><label for="prTask">任務編組</label><input id="prTask" list="taskList" maxlength="12" value="${esc(p.task||'')}" placeholder="例：搜救、射水"><datalist id="taskList">${TASKS.map(t=>`<option value="${t}">`).join('')}</datalist></div>`;
   sliderSpecs(e).forEach(([k,mn,mx,st])=>{h+=`<label class="prl" for="pr_${k}">${lblOf(e,k)}：<b id="pv_${k}">${fmtPrm(e,k,valOf(e,k))}</b></label><input type="range" class="prs" id="pr_${k}" data-k="${k}" min="${mn}" max="${mx}" step="${st}" value="${valOf(e,k)}">`});
   if(d.tank&&!isCtl())h+=`<div class="fxrow">水量：${p.water}%</div>`;
@@ -1220,6 +1263,7 @@ function prmEnt(){const e=entities.get(S.sel);if(!e)return null;if(!canEdit(e)){
 function setSize(e,v){const o=e.obj,b=o.userData.base||1;o.scale.setScalar(b*v);e.scale=v}
 $('#prmRow').addEventListener('change',ev=>{const t=ev.target,e=prmEnt();if(!e)return;
   if(t.id==='prAttire'){const v=t.value;setPrm(e,v==='SCBA'?{attire:v,air0:20,airT:S.elapsed}:{attire:v});push(e);renderSceneList();renderPrm(e);log(`「${e.name}」著裝層級：${v}`,'sys')}
+  else if(t.id==='prOn'){setPrm(e,{on:t.checked});push(e);log(`「${e.name}」照明${t.checked?'開啟':'關閉'}`,'sys')}
   else if(t.id==='prTask'){const v=t.value.trim().slice(0,12);setPrm(e,{task:v});push(e);renderSceneList();log(`「${e.name}」任務編組：${v||'（未指定）'}`,'sys')}
   else if(t.classList.contains('prs')){const k=t.dataset.k,txt=fmtPrm(e,k,t.value);push(e);
     if(k==='water')doInject(`「${e.name}」水量調整為 ${txt}`,null,false);else log(`調整「${e.name}」${lblOf(e,k)}：${txt}`,'sys')}});
@@ -1253,6 +1297,7 @@ function spawnAround(e,n){const d=CATALOG[e.type],sp=d.spawn,o=e.obj;if(!sp)retu
   if(pts.length<n)flash(pts.length?`周圍空間不足，只增派了 ${pts.length} 名`:'周圍已經沒有空位')}
 function toggleLabels(){S.labels=!S.labels;$('#labelBtn').classList.toggle('on',S.labels)}
 $('#labelBtn').onclick=toggleLabels;
+$('#nightBtn').onclick=()=>{if(isTrainee()){flash('白天／夜間由教官切換');return}const v=!NIGHT;applyNight(v);if(NET.on)NET.ref.child('meta').update({night:v});log(v?'情境切換為夜間':'情境切換為白天','sys')};
 $('#palBtn').onclick=()=>$('#palette').classList.toggle('open');
 $('#logBtn').onclick=()=>openPanel('#logPanel');
 $('#logClose').onclick=()=>$('#logPanel').classList.remove('show');
@@ -1385,7 +1430,7 @@ function attach(){const r=NET.ref;
   r.child('log').on('child_added',s=>{S.log.push(s.val());renderLog()});
   NET.injQ=r.child('injects').orderByChild('ts').startAt(serverNow()-1000);
   NET.injQ.on('child_added',s=>{const v=s.val();if(!v||v.by===CID)return;showInject(v.text,v.p?P(v.p[0],v.p[1],v.p[2]):null,$('#followCam').checked)});
-  r.child('meta').on('value',s=>{if(!s.exists()){if(NET.on)sessionEnded();return}NET.meta=s.val()});
+  r.child('meta').on('value',s=>{if(!s.exists()){if(NET.on)sessionEnded();return}NET.meta=s.val();applyNight(!!NET.meta.night)});
   r.child('players').on('value',s=>{NET.players=s.val()||{};renderRoster();if(S.sel)updateInspector();renderSceneList()});
   const me=r.child('players/'+CID);me.set({name:NET.me.name,pos:NET.me.pos,host:NET.host,ts:firebase.database.ServerValue.TIMESTAMP});me.onDisconnect().remove();
   const url=location.origin+location.pathname+'?s='+NET.code;
@@ -1394,7 +1439,7 @@ function attach(){const r=NET.ref;
   $('#endSess').style.display=NET.host?'':'none';
   $('#clockBtn').style.display=NET.host?'':'none';
   flash(NET.host?`場次 ${NET.code} 已建立，請學員掃描 QR Code 加入`:`已加入場次 ${NET.code}`)}
-function leaveSession(silent){document.body.classList.remove('net-trainee');if(!NET.ref){NET.on=false;return}const r=NET.ref;
+function leaveSession(silent){document.body.classList.remove('net-trainee');applyNight(false);if(!NET.ref){NET.on=false;return}const r=NET.ref;
   ['ents','log','meta','players'].forEach(k=>r.child(k).off());if(NET.injQ)NET.injQ.off();
   if(NET.on){const me=r.child('players/'+CID);me.onDisconnect().cancel();me.remove()}
   NET.on=false;NET.ref=null;NET.code=null;NET.host=false;NET.players={};NET.meta=null;
@@ -1434,7 +1479,7 @@ function launch(data,opt={}){
   $('#injectBtn').style.display=S.role==='ctrl'?'':'none';$('#tipBtn').style.display=S.role==='ctrl'?'':'none';$('#modSaveBtn').style.display=(S.role==='ctrl'&&AUTH.token&&AUTH.user&&AUTH.user.key!=='tr'&&(!NET.on||NET.host))?'':'none';if(S.role!=='ctrl')$('#tipPanel').classList.remove('show');
   if(S.role!=='ctrl'&&S.cat==='env')S.cat='all';
   renderTabs();renderItems();renderSceneList();
-  document.body.classList.toggle('net-trainee',!!(NET.on&&!NET.host));
+  document.body.classList.toggle('net-trainee',!!(NET.on&&!NET.host));applyNight(NET.on&&NET.meta?!!NET.meta.night:false);
   $('#start').classList.add('hide');controls.update()}
 
 /* ---------- 主迴圈 ---------- */
