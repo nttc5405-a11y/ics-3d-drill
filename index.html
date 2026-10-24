@@ -222,7 +222,10 @@ dialog h2{margin:0 0 10px;font-size:16px}
 @media (prefers-reduced-motion:reduce){#marq{white-space:normal;padding:9px 12px}#marq .mtrack{animation:none;padding-left:0}}
 .lbox{margin:auto;width:min(460px,100%);padding:24px}
 .introWrap{margin-top:20px}
-.introWrap video{display:block;width:100%;aspect-ratio:16/9;border-radius:10px;background:#12181f}
+.vlink{position:relative;display:block;width:100%;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#12181f;text-decoration:none}
+.vlink img{display:block;width:100%;height:100%;object-fit:cover;opacity:.85}
+.vlink span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.72);color:#fff;border-radius:999px;padding:10px 20px;font-weight:700;font-size:16px;white-space:nowrap}
+.vlink:hover span,.vlink:focus-visible span{background:var(--red)}
 .vtitle{margin:0 0 8px;font-size:15px;font-weight:700}
 #hotwash{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;background:rgba(10,15,20,.62);padding:14px}
 #hotwash.show{display:flex}
@@ -427,12 +430,12 @@ html,body{touch-action:manipulation}
       <button type="button" class="tbtn" id="lApply" hidden>還沒有帳號？申請帳號</button>
       <div class="introWrap">
         <h3 class="vtitle">① 系統介紹（約 2 分鐘）</h3>
-        <video id="introVid" src="intro.mp4" poster="intro-poster.jpg" controls playsinline preload="none" aria-label="系統介紹影片，約 2 分鐘，附字幕與背景音樂"></video>
-        <p class="note">第一次使用？點上方播放，約 2 分鐘看懂（附字幕與背景音樂，可自行調整音量）</p>
+        <a class="vlink" href="https://youtu.be/P7X6LBEBXh8" target="_blank" rel="noopener noreferrer" aria-label="在 YouTube 觀看：系統介紹影片，約 2 分鐘"><img src="intro-poster.jpg" alt="" loading="lazy"><span>▶ 在 YouTube 觀看</span></a>
+        <p class="note">第一次使用？點上方圖片，會在 YouTube 開啟，約 2 分鐘看懂（附字幕與背景音樂）</p>
       </div>
       <div class="introWrap">
         <h3 class="vtitle">② 連線演練示範：指揮官演練（約 5 分半鐘）</h3>
-        <video id="demoVid" src="demo-ic.mp4" poster="demo-ic-poster.jpg" controls playsinline preload="none" aria-label="連線演練示範影片，約 5 分半鐘，附字幕與背景音樂"></video>
+        <a class="vlink" href="https://youtu.be/Ak-nKv30E0w" target="_blank" rel="noopener noreferrer" aria-label="在 YouTube 觀看：連線演練示範影片，約 5 分半鐘"><img src="demo-ic-poster.jpg" alt="" loading="lazy"><span>▶ 在 YouTube 觀看</span></a>
         <p class="note">教官開房間、學員加入，到出勤回報、宣告指揮站、分組分派、請求支援的完整流程（系統只同步畫面，不傳聲音）</p>
       </div>
       <p class="note" id="visitCnt" hidden style="text-align:center;margin-top:12px"></p>
@@ -1284,7 +1287,6 @@ const NET={on:false,code:null,ref:null,host:false,me:{name:'',pos:'',label:''},p
 let applying=false;
 if(fdb)fdb.ref('.info/serverTimeOffset').on('value',s=>{NET.offset=s.val()||0});
 const serverNow=()=>Date.now()+(NET.on?NET.offset:0);
-['introVid','demoVid'].forEach(id=>{const v=document.getElementById(id);if(v)v.addEventListener('play',()=>['introVid','demoVid'].forEach(o=>{if(o!==id){const w=document.getElementById(o);if(w)w.pause()}}))});
 /* 網站計數器：每台裝置每天只算一次；顯示「今日」與「累計」人次（以台灣日期分日） */
 if(fdb)(async()=>{try{
   const day=new Date(Date.now()+8*36e5).toISOString().slice(0,10).replace(/-/g,'');
@@ -1757,11 +1759,12 @@ function roleKey(zh){return zh==='管理員'?'admin':zh==='教官'?'ins':'tr'}
 async function loadMarquee(){
   if(!GAS_URL)return;
   try{const r=await fetch(GAS_URL+'?action=marquee');const j=await r.json();const items=(j&&j.items)||[];
+    $('#lApply').hidden=!(j&&j.apply!==false);   // 是否開放申請帳號，由試算表「跑馬燈」分頁 E5 控制
     if(j&&j.login===false){$('#lGuest').hidden=false;$('#lLead').textContent='目前開放免登入試玩（單機、學員模式）。教官請用帳號登入，才能使用完整功能。'}
     if(!items.length)return;const m=$('#marq');m.querySelector('span').textContent=items.join('　　◆　　');m.style.setProperty('--mqs',(j.speed||30)+'s');m.hidden=false}
   catch(err){console.error(err)}}
 function enterGuest(){AUTH.user={acct:'guest',name:'訪客',role:'訪客',key:'tr'};AUTH.token='';
-  $('#login').classList.add('hide');try{$('#introVid').pause();$('#demoVid').pause()}catch(e){}
+  $('#login').classList.add('hide');
   $('#start').classList.add('guest');$('#userBtn').style.display='';$('#userBtn').textContent='訪客（單機・學員）';
   applyView('tr');$('#jName').value='訪客';setRole('trainee')}
 $('#lGuest').onclick=enterGuest;
@@ -1775,7 +1778,7 @@ function applyView(v){
   $('#hName').value=u.name;$('#jName').value=u.name;$('#hName').readOnly=lock;$('#jName').readOnly=lock}
 function enterApp(user,token){
   user.key=roleKey(user.role);AUTH.user=user;AUTH.token=token||'';
-  $('#login').classList.add('hide');$('#lPass').value='';try{$('#introVid').pause();$('#demoVid').pause()}catch(e){}
+  $('#login').classList.add('hide');$('#lPass').value='';
   $('#userBtn').style.display='';$('#userBtn').textContent=`${user.name}（${user.role}）`;
   applyView(user.key==='tr'?'tr':'ins')}
 $('#loginForm').addEventListener('submit',async ev=>{ev.preventDefault();
@@ -1790,7 +1793,6 @@ if(!GAS_URL){$('#lMsg').textContent='尚未設定登入服務（GAS_URL）。';$
 $('#lDemo').onclick=()=>enterApp({acct:'demo',name:'示範',role:'管理員'},'');
 /* 申請帳號：寫入試算表「帳號申請」分頁，管理者核准後以信箱回覆 */
 let apId=null;
-$('#lApply').hidden=!GAS_URL;
 $('#lApply').onclick=()=>{$('#apMsg').textContent='';$('#applyDlg').showModal()};
 $('#apCancel').onclick=()=>$('#applyDlg').close();
 $('#apSend').onclick=async()=>{const b=$('#apSend'),msg=$('#apMsg'),v=q=>$(q).value.trim();msg.textContent='';
