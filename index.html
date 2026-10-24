@@ -1074,11 +1074,40 @@ Object.assign(CATALOG,{
 });
 
 /* ---------- 水域救援：場景（海邊、溪流） ---------- */
+/* 風浪：近岸海面用可起伏的網格（浪高約 1.7 公尺），港口內被防波堤擋住、浪很小 */
+let waveMesh=null,waveBase=null;
+const sstep=(a,b,x)=>{const k=Math.min(1,Math.max(0,(x-a)/(b-a)));return k*k*(3-2*k)};
+function waveAmp(x,z){const a=sstep(-34,-62,z)*(1-sstep(-135,-165,z)),hx=sstep(-104,-98,x)*(1-sstep(-48,-42,x)),hz=sstep(-30,-36,z)*(1-sstep(-102,-108,z));return a*(1-.92*hx*hz)}
+function waveY(x,z,t){const f=Math.sin(x*.09+t*1.1+z*.03)*.6+Math.sin(z*.13-t*1.5+x*.02)*.9+Math.sin((x+z)*.21+t*2)*.25;return .1+waveAmp(x,z)*(f+1.75)*.5}
+function updateWaves(t){if(!waveMesh||!waveMesh.parent)return;const pa=waveMesh.geometry.attributes.position,b=waveBase;
+  const ca=waveMesh.geometry.attributes.color;
+  for(let i=0;i<pa.count;i++){const y=waveY(b[i*2],b[i*2+1],t);pa.setY(i,y);if(ca){const k=Math.min(1,Math.max(0,(y-.1)/1.5)),w=Math.max(0,k-.55)*2.2;ca.setXYZ(i,.55+.45*k+w*.5,.75+.25*k+w*.4,.95+.05*k+w*.1)}}
+  pa.needsUpdate=true;if(ca)ca.needsUpdate=true;waveMesh.geometry.computeVertexNormals()}
+const FLOATERS=['wvictim','boat','jetski','raft','swimmer','diver','ring','rcbuoy','lifejacket','throwbag'];
+function harborBuild(){const cc=0xb9b6ad;
+  const wall=(x0,z0,x1,z1,w=4)=>{const dx=x1-x0,dz=z1-z0,L=Math.hypot(dx,dz),m=box(L,3.4,w,cc,(x0+x1)/2,.9,(z0+z1)/2);m.rotation.y=-Math.atan2(dz,dx);envGroup.add(m)};
+  wall(-100,-26,-100,-100);wall(-102,-100,-60,-100);wall(-50,-26,-50,-76);
+  for(let x=-100;x<=-62;x+=5)rock(x,-103.5,1.7);for(let z=-100;z>=-40;z-=5)rock(-103.5,z,1.6);
+  slab(52,10,0x9a9892,-75,-31,.12,.1);
+  for(let x=-94;x<=-58;x+=9){const bl=cyl(.18,.22,.5,0x333333,x,.45,-35.2,8);envGroup.add(bl)}
+  [[-88,-44],[-80,-46],[-70,-44]].forEach(([x,z],i)=>{const b=CATALOG.boat.build();b.scale.setScalar(.8+i*.1);b.position.set(x,.1,z);b.rotation.y=Math.PI/2+(i-1)*.08;envGroup.add(b)});
+  const lh=new THREE.Group();lh.add(cyl(1.4,2,9,0xffffff,0,4.5,0));lh.add(cyl(1.5,1.7,2.6,0xc8102e,0,6.2,0));lh.add(cyl(1.9,1.9,.4,0x333333,0,9.2,0));
+  const lamp=new THREE.Mesh(new THREE.CylinderGeometry(.9,.9,1.5,10),new THREE.MeshBasicMaterial({color:0xfff2c0}));lamp.position.y=10.1;lh.add(lamp);
+  const rf=new THREE.Mesh(new THREE.ConeGeometry(1.4,1.2,10),mat(0xc8102e));rf.position.y=11.4;lh.add(rf);lh.position.set(-62,2.5,-100);envGroup.add(lh);
+  envGroup.add(cyl(.3,.3,4,0xc8102e,-50,4.5,-76));
+  const sg=new THREE.Mesh(new THREE.PlaneGeometry(10,1.4),new THREE.MeshBasicMaterial({map:textTex('漁港（風浪大請由此進出）','#1b4f8a','#fff',640,90,46)}));sg.position.set(-75,3.4,-27);envGroup.add(sg);
+  for(const x of[-79.6,-70.4])envGroup.add(cyl(.08,.08,3,0x59636d,x,1.5,-27,6))}
 function seaEnv(){waterTex.length=0;road(10);
   slab(800,20,0xd9c79b,0,-16);
-  waterPlane(800,380,0,-216,{color:0x2a79a6,vx:.004,vy:.012});
+  waterPlane(150,136,325,-102,{color:0x2a79a6,vx:.004,vy:.012});waterPlane(150,136,-325,-102,{color:0x2a79a6,vx:.004,vy:.012});
+  waterPlane(800,236,0,-288,{color:0x2a79a6,vx:.004,vy:.012});
+  {const geo=new THREE.PlaneGeometry(500,136,125,34);geo.rotateX(-Math.PI/2);const pa=geo.attributes.position;waveBase=new Float32Array(pa.count*2);
+    for(let i=0;i<pa.count;i++){waveBase[i*2]=pa.getX(i);waveBase[i*2+1]=pa.getZ(i)-102}
+    const t=waterTexture();t.repeat.set(500/24,136/24);geo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(pa.count*3),3));
+    waveMesh=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0x2a79a6,vertexColors:true,map:t,transparent:true,opacity:.9,roughness:.3,metalness:.05}));waveMesh.position.z=-102;waveMesh.receiveShadow=true;envGroup.add(waveMesh);waterTex.push({t,vx:.004,vy:.03});updateWaves(0)}
   waterPlane(800,14,0,-33,{color:0x58b9cc,op:.65,vy:-.02,y:.09});
-  for(const z of[-26.4,-31,-36])slab(800,.7,0xffffff,0,z,.1,.02);
+  for(const z of[-26.4,-31,-36]){slab(300,.7,0xffffff,-250,z,.1,.02);slab(450,.7,0xffffff,175,z,.1,.02)}
+  harborBuild();
   for(let i=0;i<16;i++){rock(58+(i%2)*2.4,-27-i*3.2,1.5+((i*.37)%1)*1.1);if(i%3===0)rock(61,-29-i*3.2,1.2)}
   // 救生員瞭望台
   const tw=new THREE.Group();for(const[x,z]of[[-.8,-.8],[.8,-.8],[-.8,.8],[.8,.8]])tw.add(cyl(.08,.08,2.6,0xf1f1ee,x,1.3,z,6));
@@ -1098,22 +1127,23 @@ function riverEnv(){waterTex.length=0;road(10);
   const sg=new THREE.Mesh(new THREE.PlaneGeometry(6,1.4),new THREE.MeshBasicMaterial({map:textTex('低水壩 危險','#c8102e','#fff',384,90,48)}));sg.position.set(-80,3,-10);envGroup.add(sg);
   for(let x=-100;x<=100;x+=14){tree(x,-9);tree(x+5,-36)}}
 function setNightAll(v){applyNight(v);if(NET.on&&NET.host)NET.ref.child('meta').update({night:v})}
+function route(e,pts,ms=3800){let i=0;(function go(){if(i>=pts.length||!entities.has(e.id))return;slide(e,pts[i++],ms);setTimeout(go,ms+100)})()}
 function slide(e,to,ms=2500){const p0=e.obj.position.clone(),y=to.y||0;push(e,ms,{x:to.x,y,z:to.z});tween(ms,k=>e.obj.position.lerpVectors(p0,P(to.x,y,to.z),ease(k)))}
-SCEN.sea={name:'海岸落水救援',desc:'海邊遊客被離岸流帶離岸邊：岸上拋投、水上救生、空拍機空勘、潛水搜索與夜間照明',top:'var(--c-ppl)',cam:[30,30,38],tgt:[0,0,-46],
+SCEN.sea={name:'海岸落水救援',desc:'風浪大、遊客被離岸流帶離岸邊：船艇改由東側港口出港，搭配拋投、空拍機空勘、潛水搜索與夜間照明',top:'var(--c-ppl)',cam:[30,30,38],tgt:[0,0,-46],
   env:seaEnv,
-  init:[['wvictim',10,-60,0,'落水者 A'],['wvictim',24,-78,0,'落水者 B'],['civ',-6,-21,.5,'目擊者 1'],['civ',-9,-20,1,'目擊者 2'],['lifejacket',-3,-14,0,'救生衣（岸邊）'],['ring',0,-23,0,'救生圈'],['note',-24,-13,0,'民眾集合處'],['wind',-34,-12,.9]],
+  init:[['wvictim',10,-60,0,'落水者 A'],['wvictim',24,-78,0,'落水者 B'],['civ',-6,-21,.5,'目擊者 1'],['civ',-9,-20,1,'目擊者 2'],['lifejacket',-3,-14,0,'救生衣（岸邊）'],['ring',0,-23,0,'救生圈'],['note',-24,-13,0,'民眾集合處'],['note',-75,-30,0,'港口（出港點）'],['wind',-34,-12,.9]],
   inj:[
-    {at:0,t:'119 報案：海邊遊客被浪捲走，兩人離岸約 40～60 公尺載浮載沉',fx:()=>P(14,0,-62)},
+    {at:0,t:'119 報案：海邊遊客被浪捲走，現場風浪大、浪高約 1～2 公尺，兩人離岸約 40～60 公尺載浮載沉',fx:()=>P(14,0,-62)},
     {at:90,t:'第一梯次水箱車、水域救援器材車、救護車抵達，停於濱海道路',fx:()=>firstWave([['engine','第一梯次 水箱車',-14],['rescue','水域救援器材車',-24],['amb','第一梯次 救護車',-34]])},
     {at:180,t:'目擊者表示落水者 A 抓著浮板、仍有意識；落水者 B 已多次沉浮',fx(){const a=findEnt('wvictim','A'),b=findEnt('wvictim','B');if(a)setStatus(a,'抓浮板／有意識');if(b)setStatus(b,'體力不支');return a?a.obj.position.clone():null}},
     {at:270,t:'空拍機升空空勘：回報離岸流由岸邊向外海，寬度約 15 公尺',fx(){const e=addEntity('drone',6,-38,0,'空拍機（空勘）',1,true);setStatus(e,'空勘中');addEntity('rapids',8,-45,0,'離岸流',1.8,true);return P(8,30,-45)}},
     {at:360,t:'岸邊人員拋投救生圈與拋繩袋，距離仍不足',fx(){addEntity('throwbag',-1,-24,0,null,1,true);return P(-1,0,-24)}},
-    {at:450,t:'動力救生艇、水上摩托車下水，由側向避開離岸流接近',fx(){const b=addEntity('boat',-12,-30,Math.PI/2,'動力救生艇',1,true),j=addEntity('jetski',-4,-30,Math.PI/2,'水上摩托車',1,true);slide(b,P(8,0,-52),6000);slide(j,P(20,0,-70),6000);return P(0,0,-45)}},
-    {at:540,t:'救生員救起落水者 A（意識清楚），由水上摩托車送回岸邊',fx(){const a=findEnt('wvictim','A'),j=findEnt('jetski');if(a)removeEntity(a.id,true);if(j)slide(j,P(-2,0,-29),5000);const v=addEntity('victim',-2,-24,0,'救上岸 A',1,true);setStatus(v,'意識清楚／保暖');return P(-2,0,-24)}},
-    {at:630,t:'落水者 B 失去蹤影，現場指揮決定派潛水員下水搜索',fx(){const b=findEnt('wvictim','B');if(b)setStatus(b,'失蹤');addEntity('diver',-4,-24,0,'潛水員 1',1,true);addEntity('diver',-6,-24,0,'潛水員 2',1,true);return b?b.obj.position.clone():P(24,0,-78)}},
+    {at:450,t:'風浪大，岸邊直接下水危險：動力救生艇、水上摩托車改由東側港口出港，繞過防波堤口後接近落水者',fx(){const b=addEntity('boat',-72,-44,Math.PI/2,'動力救生艇',1,true),j=addEntity('jetski',-64,-44,Math.PI/2,'水上摩托車',1,true);route(b,[P(-52,0,-90),P(8,0,-52)],3800);route(j,[P(-52,0,-90),P(20,0,-70)],3800);return P(-40,0,-70)}},
+    {at:540,t:'救生員救起落水者 A（意識清楚），由水上摩托車經港口送回碼頭',fx(){const a=findEnt('wvictim','A'),j=findEnt('jetski');if(a)removeEntity(a.id,true);if(j)route(j,[P(-52,0,-90),P(-64,0,-38)],3800);const v=addEntity('victim',-62,-31,0,'救上岸 A',1,true);setStatus(v,'意識清楚／保暖');return P(-62,0,-31)}},
+    {at:630,t:'落水者 B 失去蹤影，現場指揮決定派潛水員下水搜索',fx(){const b=findEnt('wvictim','B');if(b)setStatus(b,'失蹤');addEntity('diver',-68,-30,0,'潛水員 1',1,true);addEntity('diver',-71,-30,0,'潛水員 2',1,true);return b?b.obj.position.clone():P(24,0,-78)}},
     {at:720,t:'空拍機電量剩 20%，需換機或返航',fx(){const d=findEnt('drone');if(d)setStatus(d,'低電量 20%');return d?d.obj.position.clone():null}},
-    {at:810,t:'潛水員於水下尋獲落水者 B，無呼吸心跳，拉回岸上實施 CPR',fx(){const b=findEnt('wvictim','B');if(b)removeEntity(b.id,true);const v=addEntity('victim',-5,-23,0,'救上岸 B',1,true);setStatus(v,'無呼吸心跳／CPR 中');return P(-5,0,-23)}},
-    {at:900,t:'天色轉暗，現場需增設照明',fx(){setNightAll(true);addEntity('lightTripod',-8,-18,Math.PI/2,null,1.4,true);addEntity('lightTower',-24,-12,-Math.PI/2,null,1,true);return P(-10,0,-18)}},
+    {at:810,t:'潛水員於水下尋獲落水者 B，無呼吸心跳，由港口碼頭拉上岸實施 CPR',fx(){const b=findEnt('wvictim','B');if(b)removeEntity(b.id,true);const v=addEntity('victim',-66,-31,0,'救上岸 B',1,true);setStatus(v,'無呼吸心跳／CPR 中');return P(-66,0,-31)}},
+    {at:900,t:'天色轉暗，現場需增設照明',fx(){setNightAll(true);addEntity('lightTripod',-8,-18,Math.PI/2,null,1.4,true);addEntity('lightTripod',-68,-28,Math.PI/2,null,1.4,true);addEntity('lightTower',-24,-12,-Math.PI/2,null,1,true);return P(-10,0,-18)}},
     {at:1020,t:'家屬抵達現場情緒激動，要求進入警戒區',fx(){for(let i=0;i<3;i++)addEntity('civ',-18+i*1.3,-10,0,i===0?'家屬':null,1,true);return P(-17,0,-10)}},
     {at:1110,t:'傷患送醫後，持續派員沿岸搜索是否另有落水者，維持警戒',fx(){addEntity('note',6,-22,0,'沿岸持續搜索',1,true);return P(6,0,-30)}}]};
 SCEN.river={name:'溪流受困救援',desc:'野溪暴漲，民眾受困河中沙洲，另有人被沖往下游：橡皮艇、攔截繩、空拍機空勘',top:'var(--c-res)',cam:[34,30,30],tgt:[0,0,-20],
@@ -1624,6 +1654,7 @@ const clockBtnEl=$('#clockBtn');const clk=new THREE.Clock(),fwd=new THREE.Vector
 function loop(){requestAnimationFrame(loop);const dt=Math.min(clk.getDelta(),.05),t=clk.elapsedTime;
   S.run=!!clockObj().run;S.elapsed=calcElapsed();{const l=S.run?'❚❚':'▶';if(clockBtnEl.textContent!==l)clockBtnEl.textContent=l}
   waterTex.forEach(w=>{w.t.offset.x+=dt*w.vx;w.t.offset.y+=dt*w.vy});
+  if(waveMesh&&waveMesh.parent){updateWaves(t);if(S.scen==='sea')entities.forEach(e=>{if(FLOATERS.includes(e.type)&&e.obj.position.z<-34)e.obj.position.y=waveY(e.obj.position.x,e.obj.position.z,t)-.05})}
   runFx();airTick();if(!NET.on||NET.host)autoMsel();
   entities.forEach(e=>{if(CATALOG[e.type].line&&e.prm){const k=`${e.obj.position.x.toFixed(2)},${e.obj.position.z.toFixed(2)},${e.obj.rotation.y.toFixed(3)},${e.prm.ex},${e.prm.ez}`;if(e._hk!==k){e._hk=k;rebuildHose(e)}}});
   $('#clockTime').textContent=clockStr();
