@@ -67,6 +67,8 @@ button{cursor:pointer}
 .fxrow select{border:1px solid var(--line);background:var(--panel2);border-radius:7px;padding:5px 8px}
 
 /* 指揮板風格的物件面板 */
+#palFold{float:right;border:1px solid var(--line);background:transparent;color:inherit;border-radius:6px;width:28px;height:24px;cursor:pointer;font-size:14px;line-height:1}
+#palette.fold{bottom:auto}#palette.fold #search,#palette.fold #tabs,#palette.fold #items,#palette.fold .sl,#palette.fold #sceneList{display:none}
 #palette{position:absolute;left:12px;top:64px;bottom:12px;width:280px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);display:flex;flex-direction:column;z-index:10;overflow:hidden}
 .ph{padding:12px 12px 8px;border-bottom:1px solid var(--line)}
 .ph h2{margin:0 0 8px;font-size:15px}
@@ -202,6 +204,7 @@ dialog h2{margin:0 0 10px;font-size:16px}
   #palBtn{display:inline-block}
   #palette{left:0;right:0;top:auto;bottom:0;width:auto;height:58vh;border-radius:14px 14px 0 0;transform:translateY(105%);transition:transform .25s;padding-bottom:env(safe-area-inset-bottom,0px)}
   #palette.open{transform:none}
+  #palFold{display:none}
   #inspector{left:8px;right:8px;top:auto;bottom:12px;width:auto}
   #logPanel{left:0;right:0;width:auto;top:60px;bottom:0;border-radius:14px 14px 0 0}
   #banner{top:60px}
@@ -276,7 +279,7 @@ html,body{touch-action:manipulation}
 
   <aside id="palette">
     <div class="ph">
-      <h2>資源與物件</h2>
+      <h2>資源與物件<button type="button" id="palFold" title="收折／展開" aria-expanded="true">▾</button></h2>
       <input id="search" type="search" placeholder="搜尋，例如：水箱車" autocomplete="off">
       <div id="tabs"></div>
     </div>
@@ -1271,7 +1274,10 @@ function updateInspector(){const e=entities.get(S.sel);if(!e)return;const p=e.ob
   const st=$('#inStatus');st.style.display=e.status?'':'none';st.querySelector('span').textContent=e.status||'';
   $('#inMeta').innerHTML=`${CATALOG[e.type].name}　${inBld(p.x,p.z)?`室內 ${Math.round(p.y/HB.H)+1}F　`:''}位置 <span class="num">${p.x.toFixed(1)}, ${p.z.toFixed(1)}</span>　方向 <span class="num">${Math.round(((e.obj.rotation.y*180/Math.PI)%360+360)%360)}°</span>`}
 function denied(){flash('這個物件沒有指派給你，請教官指派')}
-function rotateSel(deg){const e=entities.get(S.sel);if(!e)return;if(!canEdit(e))return denied();e.obj.rotation.y+=deg*Math.PI/180;push(e,200);updateInspector()}
+function rotateSel(deg){const e=entities.get(S.sel);if(!e)return;if(!canEdit(e))return denied();
+  if(CATALOG[e.type].line&&e.prm&&e.prm.ex!=null){const a=deg*Math.PI/180,c=Math.cos(a),s=Math.sin(a),dx=e.prm.ex-e.obj.position.x,dz=e.prm.ez-e.obj.position.z;
+    setPrm(e,{ex:Math.round((e.obj.position.x+dx*c+dz*s)*100)/100,ez:Math.round((e.obj.position.z-dx*s+dz*c)*100)/100});push(e,200);updateInspector();return}
+  e.obj.rotation.y+=deg*Math.PI/180;push(e,200);updateInspector()}
 function focusOn(e){const off=camera.position.clone().sub(controls.target);controls.target.copy(e.obj.position);camera.position.copy(e.obj.position).add(off)}
 
 /* ---------- 面板 ---------- */
@@ -1426,6 +1432,7 @@ function spawnAround(e,n){const d=CATALOG[e.type],sp=d.spawn,o=e.obj;if(!sp)retu
 function toggleLabels(){S.labels=!S.labels;$('#labelBtn').classList.toggle('on',S.labels)}
 $('#labelBtn').onclick=toggleLabels;
 $('#nightBtn').onclick=()=>{if(isTrainee()){flash('白天／夜間由教官切換');return}const v=!NIGHT;applyNight(v);if(NET.on)NET.ref.child('meta').update({night:v});log(v?'情境切換為夜間':'情境切換為白天','sys')};
+$('#palFold').onclick=()=>{const f=$('#palette').classList.toggle('fold');$('#palFold').textContent=f?'▸':'▾';$('#palFold').setAttribute('aria-expanded',!f)};
 $('#palBtn').onclick=()=>$('#palette').classList.toggle('open');
 $('#logBtn').onclick=()=>openPanel('#logPanel');
 $('#logClose').onclick=()=>$('#logPanel').classList.remove('show');
@@ -1525,7 +1532,7 @@ let bTimer;function showBanner(sm,txt,ms){const b=$('#banner');b.querySelector('
 function flash(t){showBanner('系統',t,2600)}
 
 /* ---------- 開始畫面 ---------- */
-$('#scenGrid').innerHTML=Object.entries(SCEN).map(([k,s])=>`<button type="button" class="scard ${k===S.scen?'on':''}" data-k="${k}" style="border-top-color:${s.top}"><b>${s.name}</b><span>${s.desc}</span></button>`).join('');
+$('#scenGrid').innerHTML=Object.entries(SCEN).sort((a,b)=>(a[0]==='blank')-(b[0]==='blank')).map(([k,s])=>`<button type="button" class="scard ${k===S.scen?'on':''}" data-k="${k}" style="border-top-color:${s.top}"><b>${s.name}</b><span>${s.desc}</span></button>`).join('');
 $('#scenGrid').addEventListener('click',ev=>{const b=ev.target.closest('.scard');if(!b)return;S.scen=b.dataset.k;S.mod=null;$('#modNote').style.display='none';document.querySelectorAll('.scard').forEach(c=>c.classList.toggle('on',c===b))});
 function setRole(r){S.role=r;document.querySelectorAll('[data-role]').forEach(x=>x.classList.toggle('on',x.dataset.role===r));$('#ctrlBox').hidden=r!=='ctrl';$('#joinBox').hidden=r==='ctrl'}
 document.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>setRole(b.dataset.role));
