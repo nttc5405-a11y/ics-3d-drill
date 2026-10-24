@@ -89,7 +89,7 @@ button{cursor:pointer}
 
 #inspector{position:absolute;right:12px;top:64px;width:270px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:12px;z-index:11;display:none}
 #inspector.show{display:block}
-#inspector{max-height:calc(100vh - 84px);overflow:auto}
+#inspector{max-height:calc(100% - 76px);overflow:auto}
 .prl{display:block;margin:6px 0 2px}.prs{width:100%}
 .tag3d em.at{color:#ffd24a;font-weight:600}.tag3d.sel em.at{color:#6a4a00}.tag3d.alert em.at{color:#ffe9a8}
 #inspector label{font-size:12px;color:var(--muted)}
@@ -1323,6 +1323,11 @@ const resetScroll=()=>{if(window.scrollY||document.documentElement.scrollTop||do
 dlg.addEventListener('close',()=>setTimeout(resetScroll,60));
 document.addEventListener('focusout',()=>setTimeout(resetScroll,100));
 if(window.visualViewport)window.visualViewport.addEventListener('resize',()=>setTimeout(resetScroll,100));
+/* 手機鍵盤跳出時（例如在「名稱」欄輸入），瀏覽器會把畫面往上推，頂端列就看不到；
+   這裡讓整個介面只佔「可見範圍」，鍵盤開啟時頂端列仍在可見區頂端 */
+if(window.visualViewport){const vv=window.visualViewport,app=document.getElementById('app');
+  const fit=()=>{if(vv.height<window.innerHeight-80){app.style.bottom='auto';app.style.top=vv.offsetTop+'px';app.style.height=vv.height+'px'}else{app.style.top='';app.style.bottom='';app.style.height=''}window.scrollTo(0,0)};
+  vv.addEventListener('resize',fit);vv.addEventListener('scroll',fit)}
 $('#injSend').onclick=()=>{const t=$('#injText').value.trim();if(!t){$('#injText').focus();return}dlg.close();const mode=$('#injFx').value;const fx=mode==='preset'?S.pendingFx:GENERIC[mode];
   if(mode==='preset'&&S.pendingIdx!=null&&$('#injText').value.trim()){S.msel[S.pendingIdx]='done';renderMsel()}
   doInject(t,fx,$('#injCam').checked)};
