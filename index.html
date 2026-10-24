@@ -394,6 +394,7 @@ html,body{touch-action:manipulation}
         <video id="introVid" src="intro.mp4" poster="intro-poster.jpg" controls playsinline preload="none" aria-label="系統介紹影片，約 2 分鐘，附字幕與背景音樂"></video>
         <p class="note">第一次使用？點上方播放，約 2 分鐘看懂（附字幕與背景音樂，可自行調整音量）</p>
       </div>
+      <p class="note" id="visitCnt" hidden style="text-align:center;margin-top:12px"></p>
     </div>
   </div>
 
@@ -1224,6 +1225,15 @@ const NET={on:false,code:null,ref:null,host:false,me:{name:'',pos:'',label:''},p
 let applying=false;
 if(fdb)fdb.ref('.info/serverTimeOffset').on('value',s=>{NET.offset=s.val()||0});
 const serverNow=()=>Date.now()+(NET.on?NET.offset:0);
+/* 網站計數器：每台裝置每天只算一次；顯示「今日」與「累計」人次（以台灣日期分日） */
+if(fdb)(async()=>{try{
+  const day=new Date(Date.now()+8*36e5).toISOString().slice(0,10).replace(/-/g,'');
+  let seen=null;try{seen=localStorage.getItem('ics3d:visit')}catch(e){}
+  const tot=fdb.ref('counter/total'),td=fdb.ref('counter/days/'+day),inc=r=>r.transaction(v=>(v||0)+1);
+  if(seen!==day){await Promise.all([inc(tot),inc(td)]);try{localStorage.setItem('ics3d:visit',day)}catch(e){}}
+  const [a,b]=await Promise.all([tot.once('value'),td.once('value')]);
+  const el=$('#visitCnt');el.textContent='今日 '+(b.val()||0).toLocaleString()+' 人次．累計 '+(a.val()||0).toLocaleString()+' 人次';el.hidden=false;
+}catch(err){console.warn('計數器未啟用',err&&err.code||err)}})();
 const isTrainee=()=>NET.on&&!NET.host;
 function canEdit(e){return !isTrainee()||e.owner===CID||(NET.me.pos==='指揮官'&&CATALOG[e.type].cat!=='env')}
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
