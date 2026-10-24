@@ -57,7 +57,7 @@ button{cursor:pointer}
 #labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .tag3d{position:absolute;left:0;top:0;font-size:12px;font-weight:500;padding:1px 7px 1px 5px;border-radius:4px;background:rgba(18,24,31,.82);color:#f1f4f6;white-space:nowrap;border-left:4px solid var(--c-ext)}
 .tag3d[data-cat="veh"]{border-left-color:#ff4a5d}.tag3d[data-cat="ppl"]{border-left-color:#f2c230}
-.tag3d[data-cat="res"]{border-left-color:#3fbf75}.tag3d[data-cat="env"]{border-left-color:#ff8a3d}
+.tag3d[data-cat="res"]{border-left-color:#3fbf75}.tag3d[data-cat="env"]{border-left-color:#ff8a3d}.tag3d[data-cat="wat"]{border-left-color:#1fa3c7}
 .tag3d.sel{background:#d4ea38;color:#141a00}
 .tag3d.alert{background:#c8102e;color:#fff}
 .tag3d.warn{background:#c98a00;color:#fff}
@@ -503,6 +503,8 @@ html,body{touch-action:manipulation}
           <li><b>射水（直線、霧狀）、泡沫、固定式砲塔</b>：調整射程與水壓。</li>
           <li><b>水線</b>：物件位置是起點，按「設定終點」再點地面指定終點；拖曳水線或按方向鍵移動的是起點，終點不動。</li>
           <li><b>照明燈組、照明車</b>（應變類）：搭配上方「白天／夜間」按鈕使用。切到夜間後畫面變暗，燈具會在地面投出亮區；可調照明範圍，也可取消勾選「開啟照明」模擬斷電。連線時日夜由教官切換，學員同步。發電機可放在旁邊示意供電。</li>
+          <li><b>水域救援</b>：新增「海岸落水救援」「溪流受困救援」兩個情境，以及「水域」類物件：救生衣、救生圈、拋繩袋、遙控救生圈、橡皮艇、動力救生艇、水上摩托車、攔截繩、空拍機，人員有水域救生員、潛水員、落水者。消防員的著裝層級也多了「救生衣」「水域裝備」。</li>
+          <li><b>攔截繩</b>：和水線一樣，物件位置是起點，按「設定終點」點對岸即可橫跨河面。<b>空拍機</b>：選取後可調飛行高度，藍色視野圈會隨高度放大，代表空勘看得到的範圍。</li>
           <li><b>水箱車、水庫車（僅教官可調）</b>：用滑桿設定剩餘水量（水箱車以 3,000 公升、水庫車以 10,000 公升為滿水），調整後畫面會出現「狀況注入」通知所有人；學員只看得到名牌上的水量百分比。</li>
         </ul>
         <h3>小提醒</h3>
@@ -659,6 +661,8 @@ function zoneBuild(p=ZDEF){const g=new THREE.Group(),k=p.ext||1;
   return g}
 function attireGear(a){const g=new THREE.Group();g.userData.gear=true;
   if(a==='SCBA'){g.add(cyl(.12,.12,.62,0xdfe3e6,0,1.2,-.27,12));g.add(cyl(.05,.05,.12,0x333b42,0,1.55,-.27,8));g.add(box(.3,.2,.12,0x1b1f23,0,1.64,.15));g.add(box(.5,.05,.04,0x333b42,0,1.34,.16))}
+  if(a==='救生衣'||a==='水域裝備'){const ov=0xff6a00;g.add(box(.6,.5,.42,ov,0,1.22,0));g.add(box(.22,.1,.44,0xffd84a,0,1.48,0));g.add(box(.5,.05,.44,0xf1f1ee,0,1.1,0))}
+  if(a==='水域裝備'){const hm=new THREE.Mesh(new THREE.SphereGeometry(.23,16,10,0,Math.PI*2,0,Math.PI/2),mat(0xf1f1ee));hm.position.y=1.7;g.add(hm);g.add(box(.46,.8,.32,0x1f3b73,0,.4,0))}
   if(a==='A防'){const sm=new THREE.MeshStandardMaterial({color:0xd6e02a,roughness:.55}),gl=new THREE.MeshStandardMaterial({color:0xbfe6f5,transparent:true,opacity:.4,roughness:.1,depthWrite:false});
     g.add(box(.64,.92,.48,sm,0,.44,0));g.add(box(.78,.84,.52,sm,0,1.17,0));g.add(box(.54,.76,.34,sm,0,1.2,-.4));
     const hd=new THREE.Mesh(new THREE.SphereGeometry(.28,16,12),gl);hd.position.y=1.68;g.add(hd);
@@ -675,7 +679,7 @@ function initPrm(e){const d=CATALOG[e.type],o=e.obj,p={};
   if(d.dens)p.dens=1;
   if(d.light)p.on=true;
   if(o.userData.jp)Object.assign(p,{reach:o.userData.jp.L0,press:1});
-  if(e.type==='hose')Object.assign(p,{ex:Math.round((o.position.x+19)*100)/100,ez:o.position.z});
+  if(d.line)Object.assign(p,{ex:Math.round((o.position.x+(d.lineLen||19))*100)/100,ez:o.position.z});
   if(Object.keys(p).length)e.prm=p}
 function applyPrm(e){const p=e.prm||{},o=e.obj;
   if(e.type==='zones')rebuildZone(e);
@@ -683,13 +687,13 @@ function applyPrm(e){const p=e.prm||{},o=e.obj;
   if(p.dens!=null)o.userData.dens=p.dens;
   if(CATALOG[e.type].light)o.userData.lit=p.on!==false;
   if(o.userData.jp&&p.reach!=null){o.userData.jp.L=p.reach;o.userData.jp.pr=p.press||1}
-  if(e.type==='hose')e._hk=null;
+  if(CATALOG[e.type].line)e._hk=null;
   airS=-1;renderLabel(e)}
 function setPrm(e,prm){if(!e||!prm)return;e.prm=Object.assign({},e.prm,prm);applyPrm(e)}
 
 /* ---------- 物件目錄（指揮板磁鐵） ---------- */
-const CATS=[['all','全部'],['veh','車輛'],['ppl','人員'],['res','應變'],['act','戰術'],['env','環境'],['ext','其他']];
-const CAT_COLOR={veh:'var(--c-veh)',ppl:'var(--c-ppl)',res:'var(--c-res)',act:'#2a7de1',env:'var(--c-env)',ext:'var(--c-ext)'};
+const CATS=[['all','全部'],['veh','車輛'],['ppl','人員'],['res','應變'],['act','戰術'],['wat','水域'],['env','環境'],['ext','其他']];
+const CAT_COLOR={veh:'var(--c-veh)',ppl:'var(--c-ppl)',res:'var(--c-res)',act:'#2a7de1',wat:'#1fa3c7',env:'var(--c-env)',ext:'var(--c-ext)'};
 const CATALOG={
   engine:{cat:'veh',name:'水箱車',build(){const g=truck({len:8});g.add(box(5.4,.15,2,0x9aa0a6,-1.15,3.45,0));return g}},
   tender:{cat:'veh',name:'水庫車',build(){const g=truck({len:9.4,body:false});const t=cyl(1.15,1.15,6.6,C.red,-1.3,1.75,0,24);t.rotation.z=Math.PI/2;g.add(t);g.add(box(9,.18,2.55,C.ref,0,1.05,0));return g}},
@@ -865,13 +869,13 @@ Object.assign(CATALOG.engine,{tank:3000});Object.assign(CATALOG.tender,{tank:100
 /* 水線：起點＝物件位置，終點由「設定終點」指定，中間自動鋪成微彎的水帶 */
 function hoseTube(pts){const g=new THREE.Group();const m=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),60,.09,8),mat(0xe9dcbc));m.castShadow=true;g.add(m);
   for(const q of[pts[0],pts[pts.length-1]]){const c=new THREE.Mesh(new THREE.SphereGeometry(.17,10,8),mat(0xc9a227));c.position.copy(q);g.add(c)}return g}
-CATALOG.hose.name='水線';
+CATALOG.hose.name='水線';CATALOG.hose.line=true;
 CATALOG.hose.build=()=>hoseTube([[0,0],[4,2],[9,-1],[14,1],[19,0]].map(([x,z])=>new THREE.Vector3(x,.1,z)));
 function rebuildHose(e){const o=e.obj,p=e.prm;if(!p||p.ex==null)return;[...o.children].forEach(c=>{o.remove(c);disposeObj(c)});
   const dx=p.ex-o.position.x,dz=p.ez-o.position.z,L=Math.max(.5,Math.hypot(dx,dz)),nx=-dz/L,nz=dx/L,pts=[],cs=Math.cos(o.rotation.y),sn=Math.sin(o.rotation.y);
-  for(let i=0;i<=8;i++){const t=i/8,off=Math.sin(t*Math.PI*3)*Math.min(1.2,L*.05)*Math.sin(t*Math.PI),wx=dx*t+nx*off,wz=dz*t+nz*off;
+  for(let i=0;i<=8;i++){const t=i/8,off=(CATALOG[e.type].wob??1)*Math.sin(t*Math.PI*3)*Math.min(1.2,L*.05)*Math.sin(t*Math.PI),wx=dx*t+nx*off,wz=dz*t+nz*off;
     pts.push(new THREE.Vector3(wx*cs-wz*sn,.1,wx*sn+wz*cs))}
-  hoseTube(pts).children.slice().forEach(c=>o.add(c));e.r=2}
+  (CATALOG[e.type].lineMake||hoseTube)(pts).children.slice().forEach(c=>o.add(c));e.r=2}
 
 /* 夜間照明：腳架照明燈、照明車（桅燈）、發電機。光暈用貼地的發光圓與半透明光束呈現（不增加真實光源，手機也順） */
 let glowTex=null;
@@ -1004,6 +1008,129 @@ SCEN.chenggong={name:'成功鎮中華路 L 形街廓火警',desc:'中華路與�
   init:SCEN.house.init.map(a=>a[0]==='hydrant'?['hydrant',10,-4.6]:a[0]==='car'?['car',12,-1.6,0]:a),
   inj:SCEN.house.inj.map(o=>o.t.includes('鄰棟')?{at:o.at,t:o.t,fx(){const w=findEnt('wind');addEntity('smoke',6.6,-7.6,w?w.obj.rotation.y:0,'鄰棟三樓濃煙',.8,true,6.6);return P(6.6,6.4,-8)}}:o)};
 
+/* ---------- 水域救援：物件 ---------- */
+const waterTex=[];
+function waterTexture(){const cv=document.createElement('canvas');cv.width=cv.height=256;const x=cv.getContext('2d');x.fillStyle='#ffffff';x.fillRect(0,0,256,256);
+  for(let i=0;i<70;i++){x.fillStyle=i%3?'rgba(20,70,110,.14)':'rgba(255,255,255,.3)';const w=14+Math.random()*34,h=2+Math.random()*3,px=Math.random()*256,py=Math.random()*256;x.fillRect(px,py,w,h);x.fillRect(px-256,py,w,h)}
+  const t=new THREE.CanvasTexture(cv);t.wrapS=t.wrapT=THREE.RepeatWrapping;return t}
+function waterPlane(w,d,x,z,o={}){const{color=0x2e7fa8,op=.86,vx=0,vy=0,y=.08}=o,t=waterTexture();t.repeat.set(w/24,d/24);
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),new THREE.MeshStandardMaterial({color,map:t,transparent:true,opacity:op,roughness:.35,metalness:.05}));
+  m.rotation.x=-Math.PI/2;m.position.set(x,y,z);m.receiveShadow=true;envGroup.add(m);waterTex.push({t,vx,vy});return m}
+function slab(w,d,c,x,z,y=.03,h=.06){const m=box(w,h,d,c,x,y,z);m.castShadow=false;envGroup.add(m);return m}
+function rock(x,z,r,c=0x7d8288){const m=new THREE.Mesh(new THREE.DodecahedronGeometry(r,0),mat(c));m.scale.y=.7;m.position.set(x,r*.45,z);m.rotation.set(Math.random()*3,Math.random()*3,0);m.castShadow=true;envGroup.add(m);return m}
+function ropeMake(pts){const g=new THREE.Group(),cv=new THREE.CatmullRomCurve3(pts),L=cv.getLength();
+  const m=new THREE.Mesh(new THREE.TubeGeometry(cv,60,.035,6),mat(0xf2f2ee));m.castShadow=true;g.add(m);
+  const n=Math.max(2,Math.floor(L/1.8));for(let i=0;i<=n;i++){const q=cv.getPoint(i/n),f=new THREE.Mesh(new THREE.SphereGeometry(.14,8,6),mat(0xff6a00));f.position.set(q.x,q.y+.03,q.z);g.add(f)}
+  for(const q of[pts[0],pts[pts.length-1]])g.add(cyl(.07,.07,1.3,0xf2c230,q.x,.65,q.z,8));return g}
+function hullShape(pts,depth){const sh=new THREE.Shape();pts.forEach(([x,y],i)=>i?sh.lineTo(x,y):sh.moveTo(x,y));const m=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth,bevelEnabled:false}),mat(0xeeeeee));m.rotation.x=-Math.PI/2;m.castShadow=true;return m}
+Object.assign(CATALOG,{
+  lifejacket:{cat:'wat',name:'救生衣（裝備堆）',build(){const g=new THREE.Group();g.add(box(2.2,.04,1.1,0x2f6f8f,0,.02,0));
+    for(let i=0;i<5;i++){const j=new THREE.Group();j.add(box(.5,.12,.34,0xff6a00,0,.1,0));j.add(box(.18,.1,.34,0xff8a2a,-.17,.18,0));j.add(box(.18,.1,.34,0xff8a2a,.17,.18,0));
+      j.position.set((i%3-1)*.66,i>2?.14:0,i>2?.1:(i%2)*.14-.07);j.rotation.y=i*.5;g.add(j)}return g},h:1.2,noShadow:false},
+  ring:{cat:'wat',name:'救生圈（拋投）',build(){const g=new THREE.Group(),t=new THREE.Mesh(new THREE.TorusGeometry(.36,.1,10,24),mat(0xff6a00));t.rotation.x=Math.PI/2;t.position.y=.14;g.add(t);
+    for(let i=0;i<4;i++){const a=i*Math.PI/2,b=box(.1,.2,.18,0xf1f1ee,Math.cos(a)*.36,.14,Math.sin(a)*.36);b.rotation.y=-a;g.add(b)}
+    const l=new THREE.Mesh(new THREE.TorusGeometry(.2,.02,6,18),mat(0xf2c230));l.rotation.x=Math.PI/2;l.position.set(.6,.04,.3);g.add(l);return g},h:1,noShadow:true},
+  throwbag:{cat:'wat',name:'拋繩袋',build(){const g=new THREE.Group();g.add(cyl(.14,.16,.34,0xff6a00,0,.17,0,12));g.add(cyl(.145,.145,.06,0xf2c230,0,.3,0,12));
+    const l=new THREE.Mesh(new THREE.TorusGeometry(.22,.025,6,18),mat(0xf2c230));l.rotation.x=Math.PI/2;l.position.set(.45,.04,0);g.add(l);return g},h:1,noShadow:true},
+  rcbuoy:{cat:'wat',name:'遙控救生圈',build(){const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.CapsuleGeometry(.22,1.1,6,12),mat(0xff6a00));body.rotation.z=Math.PI/2;body.position.y=.2;body.castShadow=true;g.add(body);
+    g.add(box(.9,.05,.18,0xf1f1ee,0,.4,0));for(const z of[-.3,.3]){const h=new THREE.Mesh(new THREE.TorusGeometry(.2,.025,6,14,Math.PI),mat(0xf2c230));h.position.set(0,.2,z);h.rotation.y=Math.PI/2;g.add(h)}
+    g.add(cyl(.015,.015,.5,0x333b42,-.7,.6,0,6));g.add(box(.1,.08,.1,0x2b2f33,-.7,.88,0));
+    const wk=flat(new THREE.CircleGeometry(.9,18),0xffffff,.1,.35);wk.position.set(-1.1,.1,0);wk.scale.set(1.5,.5,1);g.add(wk);
+    g.userData.anim=t=>{wk.material.opacity=.25+.15*Math.sin(t*6)};return g},h:1.3,noShadow:true,fly:false},
+  raft:{cat:'wat',name:'橡皮艇',build(){const g=new THREE.Group(),tr=new THREE.Mesh(new THREE.TorusGeometry(1,.3,10,36),mat(0xe0541b));tr.rotation.x=Math.PI/2;tr.scale.set(2,1.05,1);tr.position.y=.3;tr.castShadow=true;g.add(tr);
+    g.add(box(3.4,.05,1.5,0x35393d,0,.14,0));for(const x of[-.7,.7])g.add(box(.2,.22,1.9,0xc0451a,x,.4,0));
+    for(const[x,z]of[[-.2,1.2],[.2,-1.2]]){const p=cyl(.025,.025,1.6,0x4a525a,x,.6,z,6);p.rotation.x=Math.PI/2.6;g.add(p)}return g},h:1.4,noShadow:false},
+  boat:{cat:'wat',name:'動力救生艇',build(){const g=new THREE.Group();const hl=hullShape([[-2.8,-1],[1.9,-1],[3.3,0],[1.9,1],[-2.8,1]],.7);hl.position.y=.05;g.add(hl);
+    for(const z of[-1.02,1.02]){const gw=cyl(.2,.2,5.2,0xff6a00,.25,.78,z,10);gw.rotation.z=Math.PI/2;g.add(gw)}
+    g.add(box(1.1,.7,.9,0x4a525a,-.6,1.1,0));g.add(box(.05,.5,.86,C.glass,-.1,1.3,0));g.add(box(.4,.5,1.3,0x2b2f33,-2.95,.8,0));g.add(cyl(.06,.06,.9,0x59636d,-3.0,.4,0,8));
+    lightbar(g,-.6,1.5,.9);g.add(box(2.6,.06,.2,0xc8102e,.3,.55,1.0));g.add(box(2.6,.06,.2,0xc8102e,.3,.55,-1.0));return g},h:2.2,noShadow:false},
+  jetski:{cat:'wat',name:'水上摩托車',build(){const g=new THREE.Group();g.add(box(2.4,.34,.85,0xd0d4d8,0,.28,0));const nose=box(.9,.3,.7,0xd0d4d8,1.25,.3,0);nose.rotation.z=-.25;g.add(nose);
+    g.add(box(1.5,.34,.7,0xc8102e,-.1,.58,0));g.add(box(.95,.14,.36,0x222222,-.45,.8,0));g.add(box(.12,.4,.16,0x2b2f33,.5,.8,0));const hb=cyl(.03,.03,.7,0x2b2f33,.55,1.0,0,6);hb.rotation.x=Math.PI/2;g.add(hb);
+    g.add(box(.2,.3,.5,0xff6a00,-1.2,.7,0));return g},h:1.5,noShadow:false},
+  rope:{cat:'wat',name:'攔截繩',build:()=>ropeMake([[0,0],[6,.3],[12,0],[18,-.3],[24,0]].map(([x,z])=>new THREE.Vector3(x,.1,z))),line:true,lineLen:24,wob:.15,lineMake:ropeMake,h:1.6,noShadow:true},
+  drone:{cat:'wat',name:'空拍機（空勘）',build(){const g=new THREE.Group(),dk=mat(0x2b2f33),rot=[];
+    g.add(box(.5,.14,.5,dk,0,0,0));g.add(box(.18,.1,.18,0x4a525a,0,-.12,.1));
+    const gm=new THREE.Mesh(new THREE.SphereGeometry(.09,10,8),mat(0x111111));gm.position.set(0,-.18,.18);g.add(gm);
+    for(const[x,z]of[[.45,.45],[-.45,.45],[.45,-.45],[-.45,-.45]]){const a=cyl(.02,.02,.8,0x59636d,x/2,0,z/2,6);a.rotation.z=Math.PI/2;a.rotation.y=Math.atan2(-z,x);g.add(a);
+      const r=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,.015,20),new THREE.MeshBasicMaterial({color:0x99aabb,transparent:true,opacity:.45,depthWrite:false}));r.position.set(x,.1,z);g.add(r);rot.push(r)}
+    const cone=new THREE.Mesh(new THREE.ConeGeometry(1,1,28,1,true),new THREE.MeshBasicMaterial({color:0x62e0ff,transparent:true,opacity:.08,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide}));
+    cone.geometry.translate(0,-.5,0);cone.raycast=()=>{};g.add(cone);
+    const ring=new THREE.Mesh(new THREE.RingGeometry(.96,1,40),new THREE.MeshBasicMaterial({color:0x62e0ff,transparent:true,opacity:.6,depthWrite:false,side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.raycast=()=>{};g.add(ring);
+    const fl=new THREE.Mesh(new THREE.CircleGeometry(1,40),new THREE.MeshBasicMaterial({color:0x62e0ff,transparent:true,opacity:.1,depthWrite:false,side:THREE.DoubleSide}));fl.rotation.x=-Math.PI/2;fl.raycast=()=>{};g.add(fl);
+    g.userData.anim=t=>{rot.forEach((r,i)=>r.rotation.y=t*40*(i%2?1:-1));const h=Math.max(2,g.position.y/(g.scale.x||1)),k=.6*h;
+      cone.scale.set(k,h,k);ring.scale.set(k,k,1);ring.position.y=-h+.08;fl.scale.set(k,k,1);fl.position.y=-h+.07;g.children[0].position.y=Math.sin(t*2)*.04};return g},h:1.3,noShadow:true,fly:true,y0:25,selR:1.4},
+  swimmer:{cat:'ppl',name:'水域救生員',build(){const g=person(0x1f3b73,0xf1f1ee,{vest:0xff6a00});g.add(box(.4,.12,.3,0xf1f1ee,0,1.0,.18));return g},task:true},
+  diver:{cat:'ppl',name:'潛水員',build(){const g=person(0x15181d,null,{});for(const x of[-.09,.09])g.add(cyl(.11,.11,.7,0xb8c0c8,x,1.2,-.27,12));g.add(box(.32,.14,.12,0x5ec8ff,0,1.66,.15));for(const x of[-.12,.12])g.add(box(.14,.04,.42,0x222222,x,.03,.3));return g},task:true},
+  wvictim:{cat:'ppl',name:'落水者（漂浮）',build(){const g=new THREE.Group(),p=person(0xd05a2a,null,{legs:0xd05a2a});p.position.y=-.65;g.add(p);
+    for(const s of[-1,1]){const a=box(.1,.55,.1,0xd8b089,s*.42,1.75-.65,0);a.rotation.z=s*.35;g.add(a)}
+    const rg=flat(new THREE.RingGeometry(.5,.62,24),0xffffff,.11,.6);g.add(rg);g.userData.anim=t=>{rg.scale.setScalar(1+.15*Math.sin(t*2.5));p.position.y=-.65+.05*Math.sin(t*1.7)};return g},h:1.7,noShadow:true},
+  rapids:{cat:'env',name:'急流／漩渦（離岸流）',build(){const g=new THREE.Group(),n=18;
+    for(let i=0;i<n;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(1,8,6),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.6,depthWrite:false}));m.userData.a=i*2.4;m.userData.r=.8+((i*.618)%1)*3.8;m.scale.set(.7,.25,.7);g.add(m)}
+    g.userData.anim=t=>g.children.forEach(m=>{const r=m.userData.r,a=m.userData.a+t*1.3/(.6+r*.35);m.position.set(Math.cos(a)*r,.16+.08*Math.sin(t*3+m.userData.a),Math.sin(a)*r)});return g},noShadow:true,flatPick:true,h:1,size:{label:'急流範圍',min:.5,max:4}}
+});
+
+/* ---------- 水域救援：場景（海邊、溪流） ---------- */
+function seaEnv(){waterTex.length=0;road(10);
+  slab(800,20,0xd9c79b,0,-16);
+  waterPlane(800,380,0,-216,{color:0x2a79a6,vx:.004,vy:.012});
+  waterPlane(800,14,0,-33,{color:0x58b9cc,op:.65,vy:-.02,y:.09});
+  for(const z of[-26.4,-31,-36])slab(800,.7,0xffffff,0,z,.1,.02);
+  for(let i=0;i<16;i++){rock(58+(i%2)*2.4,-27-i*3.2,1.5+((i*.37)%1)*1.1);if(i%3===0)rock(61,-29-i*3.2,1.2)}
+  // 救生員瞭望台
+  const tw=new THREE.Group();for(const[x,z]of[[-.8,-.8],[.8,-.8],[-.8,.8],[.8,.8]])tw.add(cyl(.08,.08,2.6,0xf1f1ee,x,1.3,z,6));
+  tw.add(box(2.2,.12,2.2,0xf1f1ee,0,2.6,0));tw.add(box(1.8,1.3,1.8,0xc8102e,0,3.35,0));tw.add(box(2.4,.14,2.4,0xf1f1ee,0,4.1,0));tw.add(box(.08,1,.08,0x777,.9,4.7,.9));
+  tw.position.set(-14,0,-14);envGroup.add(tw);
+  [[-26,-9,0xff6a00],[-22,-11,0x2a7de1],[-6,-9,0xf2c230],[2,-12,0xc8102e],[14,-10,0x2e9e53]].forEach(([x,z,c])=>{const u=new THREE.Group();u.add(cyl(.04,.04,2.2,0x777,0,1.1,0,6));const cn=new THREE.Mesh(new THREE.ConeGeometry(1.4,.5,12),mat(c));cn.position.y=2.3;u.add(cn);u.position.set(x,0,z);envGroup.add(u)});
+  for(let x=-70;x<=70;x+=14)tree(x,12)}
+function riverEnv(){waterTex.length=0;road(10);
+  slab(800,2.4,0xb9ad8f,0,-11.8);slab(800,2.4,0xb9ad8f,0,-32.2);
+  waterPlane(800,20,0,-22,{color:0x3a7f8f,op:.88,vx:.07});
+  const bar=cyl(1,1,.16,0xcdbf9a,14,.1,-22,28);bar.scale.set(7,1,3.6);bar.castShadow=false;envGroup.add(bar);
+  [[-8,-17,1.3],[-20,-27,1.7],[30,-18,1.2],[40,-27,1.6],[-30,-19,1.2],[55,-23,1.5],[22,-28,1],[2,-26,.9]].forEach(([x,z,r])=>rock(x,z,r));
+  // 人行橋
+  const br=new THREE.Group();br.add(box(5,.6,46,0x8e9297,0,3.4,0));for(const x of[-2.4,2.4])br.add(box(.12,1,46,0xb0b4b8,x,4.2,0));for(const z of[-8,8])br.add(cyl(.7,.7,3.4,0x8e9297,0,1.7,z));br.position.set(-40,0,-22);envGroup.add(br);
+  // 低水壩（下游危險：水躍）
+  envGroup.add(box(3,1.6,22,0x9aa0a6,-80,.8,-22));const fm=flat(new THREE.PlaneGeometry(10,20),0xffffff,.12,.55);fm.position.set(-87,.12,-22);envGroup.add(fm);
+  const sg=new THREE.Mesh(new THREE.PlaneGeometry(6,1.4),new THREE.MeshBasicMaterial({map:textTex('低水壩 危險','#c8102e','#fff',384,90,48)}));sg.position.set(-80,3,-10);envGroup.add(sg);
+  for(let x=-100;x<=100;x+=14){tree(x,-9);tree(x+5,-36)}}
+function setNightAll(v){applyNight(v);if(NET.on&&NET.host)NET.ref.child('meta').update({night:v})}
+function slide(e,to,ms=2500){const p0=e.obj.position.clone(),y=to.y||0;push(e,ms,{x:to.x,y,z:to.z});tween(ms,k=>e.obj.position.lerpVectors(p0,P(to.x,y,to.z),ease(k)))}
+SCEN.sea={name:'海岸落水救援',desc:'海邊遊客被離岸流帶離岸邊：岸上拋投、水上救生、空拍機空勘、潛水搜索與夜間照明',top:'var(--c-ppl)',cam:[30,30,38],tgt:[0,0,-46],
+  env:seaEnv,
+  init:[['wvictim',10,-60,0,'落水者 A'],['wvictim',24,-78,0,'落水者 B'],['civ',-6,-21,.5,'目擊者 1'],['civ',-9,-20,1,'目擊者 2'],['lifejacket',-3,-14,0,'救生衣（岸邊）'],['ring',0,-23,0,'救生圈'],['note',-24,-13,0,'民眾集合處'],['wind',-34,-12,.9]],
+  inj:[
+    {at:0,t:'119 報案：海邊遊客被浪捲走，兩人離岸約 40～60 公尺載浮載沉',fx:()=>P(14,0,-62)},
+    {at:90,t:'第一梯次水箱車、水域救援器材車、救護車抵達，停於濱海道路',fx:()=>firstWave([['engine','第一梯次 水箱車',-14],['rescue','水域救援器材車',-24],['amb','第一梯次 救護車',-34]])},
+    {at:180,t:'目擊者表示落水者 A 抓著浮板、仍有意識；落水者 B 已多次沉浮',fx(){const a=findEnt('wvictim','A'),b=findEnt('wvictim','B');if(a)setStatus(a,'抓浮板／有意識');if(b)setStatus(b,'體力不支');return a?a.obj.position.clone():null}},
+    {at:270,t:'空拍機升空空勘：回報離岸流由岸邊向外海，寬度約 15 公尺',fx(){const e=addEntity('drone',6,-38,0,'空拍機（空勘）',1,true);setStatus(e,'空勘中');addEntity('rapids',8,-45,0,'離岸流',1.8,true);return P(8,30,-45)}},
+    {at:360,t:'岸邊人員拋投救生圈與拋繩袋，距離仍不足',fx(){addEntity('throwbag',-1,-24,0,null,1,true);return P(-1,0,-24)}},
+    {at:450,t:'動力救生艇、水上摩托車下水，由側向避開離岸流接近',fx(){const b=addEntity('boat',-12,-30,Math.PI/2,'動力救生艇',1,true),j=addEntity('jetski',-4,-30,Math.PI/2,'水上摩托車',1,true);slide(b,P(8,0,-52),6000);slide(j,P(20,0,-70),6000);return P(0,0,-45)}},
+    {at:540,t:'救生員救起落水者 A（意識清楚），由水上摩托車送回岸邊',fx(){const a=findEnt('wvictim','A'),j=findEnt('jetski');if(a)removeEntity(a.id,true);if(j)slide(j,P(-2,0,-29),5000);const v=addEntity('victim',-2,-24,0,'救上岸 A',1,true);setStatus(v,'意識清楚／保暖');return P(-2,0,-24)}},
+    {at:630,t:'落水者 B 失去蹤影，現場指揮決定派潛水員下水搜索',fx(){const b=findEnt('wvictim','B');if(b)setStatus(b,'失蹤');addEntity('diver',-4,-24,0,'潛水員 1',1,true);addEntity('diver',-6,-24,0,'潛水員 2',1,true);return b?b.obj.position.clone():P(24,0,-78)}},
+    {at:720,t:'空拍機電量剩 20%，需換機或返航',fx(){const d=findEnt('drone');if(d)setStatus(d,'低電量 20%');return d?d.obj.position.clone():null}},
+    {at:810,t:'潛水員於水下尋獲落水者 B，無呼吸心跳，拉回岸上實施 CPR',fx(){const b=findEnt('wvictim','B');if(b)removeEntity(b.id,true);const v=addEntity('victim',-5,-23,0,'救上岸 B',1,true);setStatus(v,'無呼吸心跳／CPR 中');return P(-5,0,-23)}},
+    {at:900,t:'天色轉暗，現場需增設照明',fx(){setNightAll(true);addEntity('lightTripod',-8,-18,Math.PI/2,null,1.4,true);addEntity('lightTower',-24,-12,-Math.PI/2,null,1,true);return P(-10,0,-18)}},
+    {at:1020,t:'家屬抵達現場情緒激動，要求進入警戒區',fx(){for(let i=0;i<3;i++)addEntity('civ',-18+i*1.3,-10,0,i===0?'家屬':null,1,true);return P(-17,0,-10)}},
+    {at:1110,t:'傷患送醫後，持續派員沿岸搜索是否另有落水者，維持警戒',fx(){addEntity('note',6,-22,0,'沿岸持續搜索',1,true);return P(6,0,-30)}}]};
+SCEN.river={name:'溪流受困救援',desc:'野溪暴漲，民眾受困河中沙洲，另有人被沖往下游：橡皮艇、攔截繩、空拍機空勘',top:'var(--c-res)',cam:[34,30,30],tgt:[0,0,-20],
+  env:riverEnv,
+  init:[['civ',12,-21,0,'受困民眾 A（兒童）'],['civ',14.5,-23.5,0,'受困民眾 B'],['civ',16.5,-21,0,'受困民眾 C'],['wind',-30,-4,.5],['note',20,-8,0,'指揮所預定位置']],
+  inj:[
+    {at:0,t:'119 報案：野溪上游降雨水位暴漲，3 人受困河中沙洲，另有 1 人被沖往下游',fx:()=>P(14,0,-22)},
+    {at:90,t:'第一梯次水箱車、水域救援器材車、救護車抵達，停於溪畔道路',fx:()=>firstWave([['engine','第一梯次 水箱車',2],['rescue','水域救援器材車',-8],['amb','第一梯次 救護車',-18]])},
+    {at:180,t:'水位持續上漲，沙洲面積縮小，受困民眾腳踝已浸水',fx(){['A','B','C'].forEach(k=>{const e=findEnt('civ','受困民眾 '+k);if(e)setStatus(e,'水位上升')});return P(14,0,-22)}},
+    {at:270,t:'空拍機升空空勘：下游約 70 公尺處一人攀附倒木，下游 100 公尺有低水壩',fx(){const e=addEntity('drone',-10,-22,0,'空拍機（空勘）',1,true);setStatus(e,'空勘中');const v=addEntity('wvictim',-52,-24,0,'下游攀木者',1,true);setStatus(v,'攀附倒木');return P(-30,35,-22)}},
+    {at:360,t:'在低水壩上游設置攔截繩，防止後續落水者被沖入水躍',fx(){const e=addEntity('rope',-70,-33,0,'下游攔截繩',1,true);setPrm(e,{ex:-70,ez:-11});push(e);return P(-70,0,-22)}},
+    {at:450,t:'水域救援小組於上游岸邊架設橡皮艇，準備接近沙洲',fx(){const r=addEntity('raft',2,-13.5,-Math.PI/2,'橡皮艇 1',1,true);addEntity('swimmer',0,-12.5,0,'水域救生員 1',1,true);addEntity('swimmer',3.5,-12.5,0,'水域救生員 2',1,true);return r.obj.position.clone()}},
+    {at:540,t:'岸邊人員拋繩袋與救生圈給沙洲民眾，部分穿上救生衣',fx(){addEntity('throwbag',8,-13,0,null,1,true);addEntity('ring',10,-13.5,0,null,1,true);return P(10,0,-15)}},
+    {at:630,t:'橡皮艇接近沙洲，受困兒童（A）先行救出，出現低體溫',fx(){const r=findEnt('raft');if(r)slide(r,P(10,0,-19),4000);const a=findEnt('civ','A');if(a)setStatus(a,'低體溫／救出');return P(10,0,-19)}},
+    {at:720,t:'上游傳出洪峰預警，約 20 分鐘後抵達，需加速撤離',fx(){addEntity('rapids',6,-24,0,'上游洪峰',2,true);return P(6,0,-24)}},
+    {at:810,t:'沙洲全部民眾撤離完畢，清點人數無缺',fx(){['A','B','C'].forEach(k=>{const e=findEnt('civ','受困民眾 '+k);if(e)setStatus(e,'已救出')});return P(14,0,-22)}},
+    {at:900,t:'水域救援小組於下游救出攀附倒木者，意識不清',fx(){const v=findEnt('wvictim','攀木者');if(v)removeEntity(v.id,true);const n=addEntity('victim',-44,-12,0,'下游攀木者',1,true);setStatus(n,'意識不清');return P(-44,0,-12)}},
+    {at:1020,t:'天色轉暗，增設照明並持續搜索是否另有受困者',fx(){setNightAll(true);addEntity('lightTower',6,-7,0,null,1,true);addEntity('lightTripod',-44,-9,-Math.PI/2,null,1.4,true);return P(0,0,-12)}},
+    {at:1110,t:'上游水位仍高，現場劃設警戒區禁止民眾親水',fx(){addEntity('tape',20,-8,0,null,1,true);return P(20,0,-8)}}]};
+
 /* 化學工廠：廠區在道路北側（z 為負），倉庫在西、儲槽區在東，北側有住宅區 */
 function plantEnv(){
   const fl=flat(new THREE.PlaneGeometry(100,60),0x8e9297,.012,1);fl.position.set(0,.012,-38);envGroup.add(fl);
@@ -1110,7 +1237,7 @@ function addEntity(type,x,z,rot=0,name=null,scale=1,quiet=false,y=0,idArg=null){
   const bb=new THREE.Box3().setFromObject(obj);
   const e={id,type,name:nm,obj,label,scale,h:def.h||Math.max(.8,bb.max.y),r:def.selR||Math.max(1,Math.hypot(bb.max.x-bb.min.x,bb.max.z-bb.min.z)/2)};
   e.owner=(!applying&&isTrainee())?CID:'';
-  initPrm(e);entities.set(id,e);obj.position.y=y;renderSceneList();
+  initPrm(e);entities.set(id,e);obj.position.y=y||def.y0||0;renderSceneList();
   if(!applying)push(e);
   if(!quiet)log(`部署「${nm}」`);
   return e}
@@ -1193,7 +1320,7 @@ window.addEventListener('pointercancel',ev=>{ptrs.delete(ev.pointerId);cancelDra
 window.addEventListener('pointerup',ev=>{ptrs.delete(ev.pointerId);if(!down)return;const dist=Math.hypot(ev.clientX-down.x,ev.clientY-down.y);
   if(drag){const de=drag.e;if(drag.moved){const p=de.obj.position;log(`移動「${de.name}」至 ${p.x.toFixed(0)}, ${p.z.toFixed(0)}`)}drag=null;controls.enabled=true;push(de,150)}
   else if(dist<6&&ev.target===renderer.domElement){const p=ndc(ev);
-    if(S.moveTo){const g=floorAt(p),me=entities.get(S.sel);if(g&&me&&canEdit(me)){if(S.moveTo==='end'){setPrm(me,{ex:Math.round(g.x*100)/100,ez:Math.round(g.z*100)/100});push(me);log(`設定「${me.name}」終點 ${g.x.toFixed(0)}, ${g.z.toFixed(0)}`)}else{me.obj.position.set(g.x,g.y,g.z);push(me,200);log(`移動「${me.name}」至 ${g.x.toFixed(0)}, ${g.z.toFixed(0)}`)}cancelMove();updateInspector()}}
+    if(S.moveTo){const g=floorAt(p),me=entities.get(S.sel);if(g&&me&&canEdit(me)){if(S.moveTo==='end'){setPrm(me,{ex:Math.round(g.x*100)/100,ez:Math.round(g.z*100)/100});push(me);log(`設定「${me.name}」終點 ${g.x.toFixed(0)}, ${g.z.toFixed(0)}`)}else{me.obj.position.set(g.x,CATALOG[me.type].fly?me.obj.position.y:g.y,g.z);push(me,200);log(`移動「${me.name}」至 ${g.x.toFixed(0)}, ${g.z.toFixed(0)}`)}cancelMove();updateInspector()}}
     else if(S.placing){const g=floorAt(p);if(g){const rot=S.ghost?S.ghost.rotation.y:0;const e=addEntity(S.placing,g.x,g.z,rot,null,1,false,g.y);if(!ev.shiftKey)cancelPlacing();select(e.id)}}
     else{const hit=pick(p);select(hit?hit.id:null)}}
   down=null});
@@ -1232,17 +1359,18 @@ function startMove(mode='move'){const e=entities.get(S.sel);if(!e)return;cancelP
 function cancelMove(){if(!S.moveTo)return;S.moveTo=false;$('#mvBtn').classList.remove('on');if(!S.placing)$('#placeTip').classList.remove('show')}
 $('#mvBtn').onclick=()=>{const e=entities.get(S.sel);if(!e)return;if(!canEdit(e))return denied();S.moveTo?cancelMove():startMove()};
 /* 物件參數面板：著裝層級、熱暖冷區、指揮站／集結區增派人員 */
-const ATTIRES=['一般','SCBA','A防'],TASKS=['搜救','射水','通風','破壞','救護','安全官','水源','指揮幕僚','待命'];
-const LBL={hot:'熱區半徑',warm:'暖區寬度',cold:'冷區寬度',ext:'下風處拉長',dens:'煙的濃度',reach:'射程',press:'水壓',water:'水量'};
+const ATTIRES=['一般','SCBA','A防','救生衣','水域裝備'],TASKS=['搜救','射水','通風','破壞','救護','安全官','水源','指揮幕僚','待命'];
+const LBL={hot:'熱區半徑',warm:'暖區寬度',cold:'冷區寬度',ext:'下風處拉長',dens:'煙的濃度',reach:'射程',press:'水壓',water:'水量',alt:'飛行高度'};
 const isCtl=()=>NET.on?NET.host:S.role==='ctrl';
 const lblOf=(e,k)=>k==='size'?CATALOG[e.type].size.label:LBL[k];
-const valOf=(e,k)=>k==='size'?(e.scale||1):e.prm[k];
+const valOf=(e,k)=>k==='size'?(e.scale||1):k==='alt'?Math.round(e.obj.position.y):e.prm[k];
 function fmtPrm(e,k,v){v=+v;if(k==='water')return `${v}%（約 ${Math.round(CATALOG[e.type].tank*v/100).toLocaleString()} 公升）`;
-  if(k==='hot'||k==='warm'||k==='cold'||k==='reach')return `${v} 公尺`;return `${v.toFixed(1)} 倍`}
+  if(k==='hot'||k==='warm'||k==='cold'||k==='reach'||k==='alt')return `${v} 公尺`;return `${v.toFixed(1)} 倍`}
 function sliderSpecs(e){const d=CATALOG[e.type],p=e.prm||{},a=[],jp=e.obj.userData.jp;
   if(e.type==='zones')a.push(['hot',3,40,1],['warm',3,60,1],['cold',3,80,1],['ext',1,4,.1]);
   if(d.size)a.push(['size',d.size.min,d.size.max,.1]);
   if(d.dens)a.push(['dens',.2,1.6,.1]);
+  if(d.fly)a.push(['alt',8,80,1]);
   if(jp&&p.reach!=null)a.push(['reach',Math.max(3,Math.round(jp.L0*.3)),Math.round(jp.L0*2.2),1],['press',.5,1.8,.1]);
   if(d.tank&&isCtl())a.push(['water',0,100,5]);
   return a}
@@ -1256,7 +1384,7 @@ function renderPrm(e){const el=$('#prmRow');if(!e){el.innerHTML='';return}
   sliderSpecs(e).forEach(([k,mn,mx,st])=>{h+=`<label class="prl" for="pr_${k}">${lblOf(e,k)}：<b id="pv_${k}">${fmtPrm(e,k,valOf(e,k))}</b></label><input type="range" class="prs" id="pr_${k}" data-k="${k}" min="${mn}" max="${mx}" step="${st}" value="${valOf(e,k)}">`});
   if(d.tank&&!isCtl())h+=`<div class="fxrow">水量：${p.water}%</div>`;
   if(e.type==='zones')h+=`<div class="brow" style="margin:6px 0 8px"><button type="button" class="tbtn" data-act="zAlign">轉向對齊風向</button></div>`;
-  if(e.type==='hose')h+=`<div class="brow" style="margin:6px 0 4px"><button type="button" class="tbtn" data-act="hoseEnd">設定終點（點地面）</button></div><p style="margin:0 0 8px;font-size:12px;color:var(--muted)">物件位置＝起點；拖曳或按方向鍵移動起點。</p>`;
+  if(d.line)h+=`<div class="brow" style="margin:6px 0 4px"><button type="button" class="tbtn" data-act="hoseEnd">設定終點（點地面）</button></div><p style="margin:0 0 8px;font-size:12px;color:var(--muted)">物件位置＝起點；拖曳或按方向鍵移動起點。</p>`;
   if(d.spawn)h+=`<div class="brow" style="margin:6px 0 8px"><button type="button" class="tbtn" data-spawn="1">＋1 名消防員</button><button type="button" class="tbtn" data-spawn="5">＋5 名</button><button type="button" class="tbtn" data-spawn="10">＋10 名</button></div>`;
   el.innerHTML=h}
 function prmEnt(){const e=entities.get(S.sel);if(!e)return null;if(!canEdit(e)){denied();renderPrm(e);return null}return e}
@@ -1269,7 +1397,7 @@ $('#prmRow').addEventListener('change',ev=>{const t=ev.target,e=prmEnt();if(!e)r
     if(k==='water')doInject(`「${e.name}」水量調整為 ${txt}`,null,false);else log(`調整「${e.name}」${lblOf(e,k)}：${txt}`,'sys')}});
 let prmT=0;
 $('#prmRow').addEventListener('input',ev=>{const t=ev.target;if(!t.classList.contains('prs'))return;const e=prmEnt();if(!e)return;const k=t.dataset.k;
-  if(k==='size')setSize(e,+t.value);else setPrm(e,{[k]:+t.value});
+  if(k==='size')setSize(e,+t.value);else if(k==='alt')e.obj.position.y=+t.value;else setPrm(e,{[k]:+t.value});
   $('#pv_'+k).textContent=fmtPrm(e,k,t.value);const n=performance.now();if(n-prmT>150){prmT=n;push(e)}});
 $('#prmRow').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;const e=prmEnt();if(!e)return;const act=b.dataset.act;
   if(act==='zAlign'){const w=findEnt('wind');if(!w){flash('場上沒有「風向」物件，可從環境類放一個');return}
@@ -1488,8 +1616,9 @@ window.addEventListener('resize',resize);resize();
 const clockBtnEl=$('#clockBtn');const clk=new THREE.Clock(),fwd=new THREE.Vector3(),rgt=new THREE.Vector3(),mv=new THREE.Vector3();
 function loop(){requestAnimationFrame(loop);const dt=Math.min(clk.getDelta(),.05),t=clk.elapsedTime;
   S.run=!!clockObj().run;S.elapsed=calcElapsed();{const l=S.run?'❚❚':'▶';if(clockBtnEl.textContent!==l)clockBtnEl.textContent=l}
+  waterTex.forEach(w=>{w.t.offset.x+=dt*w.vx;w.t.offset.y+=dt*w.vy});
   runFx();airTick();if(!NET.on||NET.host)autoMsel();
-  entities.forEach(e=>{if(e.type==='hose'&&e.prm){const k=`${e.obj.position.x.toFixed(2)},${e.obj.position.z.toFixed(2)},${e.obj.rotation.y.toFixed(3)},${e.prm.ex},${e.prm.ez}`;if(e._hk!==k){e._hk=k;rebuildHose(e)}}});
+  entities.forEach(e=>{if(CATALOG[e.type].line&&e.prm){const k=`${e.obj.position.x.toFixed(2)},${e.obj.position.z.toFixed(2)},${e.obj.rotation.y.toFixed(3)},${e.prm.ex},${e.prm.ez}`;if(e._hk!==k){e._hk=k;rebuildHose(e)}}});
   $('#clockTime').textContent=clockStr();
   // WASD 平移
   mv.set(0,0,0);camera.getWorldDirection(fwd);fwd.y=0;fwd.normalize();rgt.crossVectors(fwd,camera.up).normalize();
