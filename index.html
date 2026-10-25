@@ -441,6 +441,7 @@ html,body{touch-action:manipulation}
         <button type="submit" class="tbtn" id="lBtn" style="background:var(--ink);color:var(--panel);border-color:var(--ink)">登入</button>
       </form>
       <p class="note" id="lMsg" role="alert"></p>
+      <p class="note" style="font-size:12px">本系統會記錄登入時間與選擇的情境，供訓練統計使用。</p>
       <button type="button" class="tbtn" id="lDemo" hidden>單機試用（未連接登入服務）</button>
       <button type="button" class="tbtn" id="lGuest" hidden>直接試玩（免登入・單機學員模式）</button>
       <button type="button" class="tbtn" id="lApply" hidden>還沒有帳號？申請帳號</button>
@@ -1725,11 +1726,11 @@ function launch(data,opt={}){
   if(data){data.ents.forEach(e=>{const n=addEntity(e.type,e.x,e.z,e.rot,e.name,e.scale||1,true,e.y||0);if(n&&e.prm)setPrm(n,e.prm);if(n&&e.status){n.status=e.status;renderLabel(n)}});camera.position.fromArray(data.cam);controls.target.fromArray(data.tgt)}
   else{const md=(!opt.join&&S.mod&&S.mod.scen===S.scen)?S.mod:null;
     if(!opt.join){if(md)md.ents.forEach(e=>{const n=addEntity(e.type,e.x,e.z,e.rot||0,e.name,e.scale||1,true,e.y||0);if(n&&e.prm)setPrm(n,e.prm)});else sc.init.forEach(([t,x,z,r=0,n=null,s=1,y=0])=>addEntity(t,x,z,r,n,s,true,y));
-      log((md?`載入模組：${md.name}`:`載入情境：${sc.name}`)+(opt.online?`（連線場次 ${NET.code}）`:`（${S.role==='ctrl'?'主控':'學員'}）`),'sys')}
-    else log(opt.online&&!NET.host?'加入場次':'回到場次','sys');camera.position.set(...(md?md.cam:sc.cam));controls.target.set(...(md?md.tgt:sc.tgt))}
+      log((md?`載入模組：${md.name}`:`載入情境：${sc.name}`)+(opt.online?`（連線場次 ${NET.code}）`:`（${S.role==='ctrl'?'主控':'學員'}）`),'sys');logEvt('選情境',md?md.name:sc.name,!!opt.online)}
+    else{log(opt.online&&!NET.host?'加入場次':'回到場次','sys');if(opt.online&&!NET.host)logEvt('加入場次',sc.name,true)};camera.position.set(...(md?md.cam:sc.cam));controls.target.set(...(md?md.tgt:sc.tgt))}
   renderLog();
   $('#scenName').textContent=`${sc.name}・${NET.on?(NET.host?'教官':NET.me.label):(S.role==='ctrl'?'主控':'學員')}`;
-  $('#injectBtn').style.display=S.role==='ctrl'?'':'none';$('#endDrillBtn').style.display=S.role==='ctrl'?'':'none';$('#tipBtn').style.display=S.role==='ctrl'?'':'none';$('#modSaveBtn').style.display=(S.role==='ctrl'&&AUTH.token&&AUTH.user&&AUTH.user.key!=='tr'&&(!NET.on||NET.host))?'':'none';if(S.role!=='ctrl')$('#tipPanel').classList.remove('show');
+  $('#injectBtn').style.display=S.role==='ctrl'?'':'none';$('#endDrillBtn').style.display=(!NET.on||NET.host)?'':'none';$('#tipBtn').style.display=S.role==='ctrl'?'':'none';$('#modSaveBtn').style.display=(S.role==='ctrl'&&AUTH.token&&AUTH.user&&AUTH.user.key!=='tr'&&(!NET.on||NET.host))?'':'none';if(S.role!=='ctrl')$('#tipPanel').classList.remove('show');
   if(S.role!=='ctrl'&&S.cat==='env')S.cat='all';
   renderTabs();renderItems();renderSceneList();
   document.body.classList.toggle('net-trainee',!!(NET.on&&!NET.host));applyNight(NET.on&&NET.meta?!!NET.meta.night:false);
@@ -1769,6 +1770,7 @@ const AUTH={user:null,token:''};
 const ssGet=k=>{try{return sessionStorage.getItem(k)}catch(e){return null}};
 const ssSet=(k,v)=>{try{sessionStorage.setItem(k,v)}catch(e){}};
 const ssDel=k=>{try{sessionStorage.removeItem(k)}catch(e){}};
+function logEvt(evt,scen,online){if(!GAS_URL)return;try{const o=online!=null?online:NET.on;gas({type:'log',token:AUTH.token||'',evt,scen:scen||'',mode:o?'連線':'單機',seat:o?(NET.host?'教官':(NET.me&&NET.me.label)||''):(S.role==='ctrl'?'主控':'學員'),room:o?NET.code||'':''}).catch(()=>{})}catch(e){}}
 async function gas(body){const r=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});return r.json()}
 const ROLE_NAME={admin:'管理員',ins:'教官',tr:'學員'};
 function roleKey(zh){return zh==='管理員'?'admin':zh==='教官'?'ins':'tr'}
@@ -1779,7 +1781,7 @@ async function loadMarquee(){
     if(j&&j.login===false){$('#lGuest').hidden=false;$('#lLead').textContent='目前開放免登入試玩（單機、學員模式）。教官請用帳號登入，才能使用完整功能。'}
     if(!items.length)return;const m=$('#marq');m.querySelector('span').textContent=items.join('　　◆　　');m.style.setProperty('--mqs',(j.speed||30)+'s');m.hidden=false}
   catch(err){console.error(err)}}
-function enterGuest(){AUTH.user={acct:'guest',name:'訪客',role:'訪客',key:'tr'};AUTH.token='';
+function enterGuest(){AUTH.user={acct:'guest',name:'訪客',role:'訪客',key:'tr'};AUTH.token='';logEvt('訪客進入','',false);
   $('#login').classList.add('hide');
   $('#start').classList.add('guest');$('#userBtn').style.display='';$('#userBtn').textContent='訪客（單機・學員）';
   applyView('tr');$('#jName').value='訪客';setRole('trainee')}
@@ -1840,10 +1842,11 @@ $('#tipBtn').onclick=()=>openPanel('#tipPanel');
 const HW_CORE=[['出勤回報','車輛、人員、出勤時間，有沒有向指揮中心回報？'],['到場 Size up','到場後有沒有說明現場狀況、風險與需求？'],['ICP 建立','指揮站位置有沒有宣告、記錄？'],['安全管制','安全官、警戒範圍、空氣瓶與人員安全有沒有掌握？'],['設立目標，並編組分派執行','目標是否明確？誰、做什麼、在哪裡，有沒有複誦確認？']];
 const HW_MORE=[['通聯','呼叫、回答、複誦有沒有做到？該用無線電或當面講話，有沒有分對？'],['持續評估','狀況改變時，目標和編組有沒有跟著調整？（Size up 不是只做一次）'],['人員安全','入室人員有沒有定時回報、空氣瓶管理、撤退訊號？有沒有指定安全官與快速介入小組（RIT）？'],['資源管理與請求支援','請求的車種、數量是否精準？增援到場後有沒有立刻指派任務？'],['人員清點（PAR）','撤出、任務轉換或狀況惡化時，有沒有確認人員都在？'],['指揮權移交','高階長官到場時，有沒有做移交指揮、交接狀況？'],['傷患與救護','有沒有檢傷分類？救護組是否就位？']];
 const HW={open:false,checked:{},elapsed:0};
-function hwItem(i,t,d){const on=!!HW.checked[i],can=isCtl();
+const hwCtl=()=>NET.on?NET.host:true;
+function hwItem(i,t,d){const on=!!HW.checked[i],can=hwCtl();
   return `<li class="${on?'done':''}"><label><input type="checkbox" data-hw="${i}" ${on?'checked':''} ${can?'':'disabled'}><span><b>${esc(t)}</b><small>${esc(d)}</small></span></label></li>`}
 function hwRender(){const inj=S.log.filter(l=>l.kind==='inject').length,more=HW_MORE.length,moreDone=HW_MORE.filter((_,k)=>HW.checked[HW_CORE.length+k]).length;
-  $('#hotwash').classList.toggle('hwview',!isCtl());
+  $('#hotwash').classList.toggle('hwview',!hwCtl());
   $('#hwCard').innerHTML=`<div class="hwtag">演練結束・HOTWASH 講評</div>
   <h2 id="hwTitle">做得好！Good job！</h2>
   <p class="hwsub">我們又完成了一場救災，沒有真實人員傷亡。</p>
@@ -1853,18 +1856,18 @@ function hwRender(){const inj=S.log.filter(l=>l.kind==='inject').length,more=HW_
   <details><summary>加碼討論（時間夠再講）　已講 ${moreDone}／${more}</summary><ol class="hwlist" style="padding:0;margin-top:6px">${HW_MORE.map((x,k)=>hwItem(HW_CORE.length+k,x[0],x[1])).join('')}</ol></details>
   <h3>最後，請每個人回答：</h3>
   <ol class="hwq"><li>這次做得最好的一件事是什麼？</li><li>下次最想改進的一件事是什麼？</li><li>如果重來一次，你會先做什麼？</li></ol>
-  <div class="hwfoot"><button type="button" class="tbtn fbhi" id="hwFb">意見回饋</button><button type="button" class="tbtn" id="hwCopy">複製紀錄（做 AAR）</button>${isCtl()?'<button type="button" class="tbtn" id="hwClose" style="margin-left:auto">關閉講評</button>':'<p class="note">講評進行中，由教官帶領討論與關閉。</p>'}</div>`}
+  <div class="hwfoot"><button type="button" class="tbtn fbhi" id="hwFb">意見回饋</button><button type="button" class="tbtn" id="hwCopy">複製紀錄（做 AAR）</button>${hwCtl()?'<button type="button" class="tbtn" id="hwClose" style="margin-left:auto">關閉講評</button>':'<p class="note">講評進行中，由教官帶領討論與關閉。</p>'}</div>`}
 function applyHotwash(h){const el=$('#hotwash');if(!el)return;
   if(!h||!h.open){HW.open=false;el.classList.remove('show');return}
   const keep=el.querySelector('details')?.open;HW.open=true;HW.checked=h.checked||{};HW.elapsed=h.elapsed||0;hwRender();el.classList.add('show');if(keep){const d=el.querySelector('details');if(d)d.open=true}}
-$('#endDrillBtn').onclick=()=>{if(!isCtl())return;const el=S.elapsed;setClock({run:false});S.run=false;log('演練結束，進入 HOTWASH 講評','sys');
+$('#endDrillBtn').onclick=()=>{if(!hwCtl())return;logEvt('演練結束',(SCEN[S.scen]||{}).name||'');const el=S.elapsed;setClock({run:false});S.run=false;log('演練結束，進入 HOTWASH 講評','sys');
   const h={open:true,checked:{},elapsed:el};if(NET.on)NET.ref.child('meta').update({hotwash:h});else applyHotwash(h)};
-$('#hotwash').addEventListener('change',ev=>{const t=ev.target;if(!t.dataset||t.dataset.hw==null||!isCtl())return;const i=+t.dataset.hw;
+$('#hotwash').addEventListener('change',ev=>{const t=ev.target;if(!t.dataset||t.dataset.hw==null||!hwCtl())return;const i=+t.dataset.hw;
   if(NET.on)NET.ref.child('meta/hotwash/checked/'+i).set(t.checked?true:null);else{HW.checked[i]=t.checked;applyHotwash({open:true,checked:HW.checked,elapsed:HW.elapsed})}});
 $('#hotwash').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;
   if(b.id==='hwCopy')$('#copyLog').click();
   else if(b.id==='hwFb')openFb();
-  else if(b.id==='hwClose'&&isCtl()){if(NET.on)NET.ref.child('meta/hotwash').remove();else applyHotwash(null)}});
+  else if(b.id==='hwClose'&&hwCtl()){if(NET.on)NET.ref.child('meta/hotwash').remove();else applyHotwash(null)}});
 $('#tipClose').onclick=()=>$('#tipPanel').classList.remove('show');
 /* 意見回饋 */
 let fbId=null;
