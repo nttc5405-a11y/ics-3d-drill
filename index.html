@@ -1634,12 +1634,12 @@ function doInject(text,fx,cam){log(`狀況注入：${text}`,'inject');const p=fx
   if(NET.on)NET.ref.child('injects').push({text,p:p?[p.x,p.y,p.z]:null,by:CID,ts:firebase.database.ServerValue.TIMESTAMP});
   showInject(text,p,cam)}
 function showInject(text,p,cam){showBanner(`狀況注入　${clockStr()}`,text,9000);if(p){pulse(p);if(cam)flyTo(p)}}
-function fireMsel(i){const o=SCEN[S.scen].inj[i];if(!o||S.msel[i]!=='wait')return;S.msel[i]='done';doInject(o.t,o.fx,S.role!=='ctrl'||$('#mselCam').checked);renderMsel()}
+function fireMsel(i){const o=SCEN[S.scen].inj[i];if(!o||S.msel[i]!=='wait')return;S.msel[i]='done';doInject(o.t,o.fx,(NET.on&&!NET.host)||$('#mselCam').checked);renderMsel()}
 function renderMsel(){const inj=SCEN[S.scen].inj,nx=S.msel.indexOf('wait');if(NET.on&&NET.host)NET.ref.child('msel').set(S.msel);
   $('#mselList').innerHTML=inj.map((o,i)=>{const st=S.msel[i];return `<li class="${st}${i===nx?' next':''}"><span class="num">${o.at!=null?clockStr(o.at*1000):'—'}</span><span class="tx">${esc(o.t)}</span><span class="act">${st==='wait'?`<button type="button" class="tbtn" data-a="fire" data-i="${i}">立即發布</button><button type="button" class="tbtn" data-a="skip" data-i="${i}">略過</button>`:st==='skip'?`<span>已略過</span><button type="button" class="tbtn" data-a="undo" data-i="${i}">恢復</button>`:'已發布'}</span></li>`}).join('')}
 const mselNextEl=$('#mselNext');
 function autoMsel(){const inj=SCEN[S.scen].inj;let nx=-1;for(let i=0;i<inj.length;i++){if(S.msel[i]==='wait'&&inj[i].at!=null){nx=i;break}}
-  if(nx>=0&&S.run&&(S.role!=='ctrl'||$('#mselAuto').checked)&&S.elapsed>=inj[nx].at*1000)fireMsel(nx);
+  if(nx>=0&&S.run&&((NET.on&&!NET.host)||$('#mselAuto').checked)&&S.elapsed>=inj[nx].at*1000)fireMsel(nx);
   const lbl=nx<0?'腳本已全部發布':`下一則 ${clockStr(Math.max(0,inj[nx].at*1000-S.elapsed))}`;if(mselNextEl.textContent!==lbl)mselNextEl.textContent=lbl}
 $('#mselList').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;const i=+b.dataset.i,o=SCEN[S.scen].inj[i];
   if(b.dataset.a==='fire')fireMsel(i);else if(b.dataset.a==='skip'){S.msel[i]='skip';log(`略過腳本：${o.t}`,'sys');renderMsel()}else{S.msel[i]='wait';renderMsel()}});
@@ -1722,7 +1722,7 @@ function launch(data,opt={}){
   S.bld=null;S.view=null;const sc=SCEN[S.scen];sc.env();$('#floorNav').classList.toggle('show',!!S.bld);document.querySelectorAll('#floorNav button').forEach(x=>x.classList.toggle('on',x.dataset.f==='ext'));
   S.clock={run:false,base:data?data.elapsed||0:0,startAt:0,speed:(data&&data.speed)||1};S.run=false;S.elapsed=S.clock.base;S.log=(!opt.online&&data)?data.log||[]:[];
   const ms0=opt.online?S._msel:(data&&data.msel);S._msel=null;S.msel=(ms0&&ms0.length===sc.inj.length)?ms0:sc.inj.map(()=>'wait');S.speed=(clockObj().speed)||1;$('#speed').value=String(S.speed);renderMsel();
-  $('#mselBtn').style.display=S.role==='ctrl'?'':'none';$('#mselPanel').classList.remove('show');
+  $('#mselBtn').style.display=(!NET.on||NET.host)?'':'none';$('#mselPanel').classList.remove('show');
   if(data){data.ents.forEach(e=>{const n=addEntity(e.type,e.x,e.z,e.rot,e.name,e.scale||1,true,e.y||0);if(n&&e.prm)setPrm(n,e.prm);if(n&&e.status){n.status=e.status;renderLabel(n)}});camera.position.fromArray(data.cam);controls.target.fromArray(data.tgt)}
   else{const md=(!opt.join&&S.mod&&S.mod.scen===S.scen)?S.mod:null;
     if(!opt.join){if(md)md.ents.forEach(e=>{const n=addEntity(e.type,e.x,e.z,e.rot||0,e.name,e.scale||1,true,e.y||0);if(n&&e.prm)setPrm(n,e.prm)});else sc.init.forEach(([t,x,z,r=0,n=null,s=1,y=0])=>addEntity(t,x,z,r,n,s,true,y));
