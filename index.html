@@ -323,6 +323,7 @@ html,body{touch-action:manipulation}
     <button type="button" class="tbtn" id="nightBtn" title="切換白天／夜間（連線時由教官切換）">白天</button>
     <button type="button" class="tbtn hide-m on" id="labelBtn">標籤</button>
     <button type="button" class="tbtn" id="modSaveBtn" style="display:none">存成模組</button>
+    <button type="button" class="tbtn" id="vlBtn" style="display:none">學員視角</button>
     <button type="button" class="tbtn" id="tipBtn" style="display:none">教官提示</button>
     <button type="button" class="tbtn" id="userBtn" style="display:none"></button>
     <button type="button" class="tbtn" id="homeBtn">首頁</button>
@@ -471,6 +472,15 @@ html,body{touch-action:manipulation}
     </div>
   </dialog>
 
+  <dialog id="vlDlg">
+    <h2 tabindex="-1" autofocus>學員視角鎖定</h2>
+    <p class="note">鎖定後，所有學員的鏡頭會貼近地面、不能俯視，教官自己不受影響。學員仍可用 WASD 或右鍵拖曳移動位置，上下樓層照常。</p>
+    <label for="vlLo">鏡頭最低高度（公尺）</label><input id="vlLo" type="number" step="0.5" min="0.5" max="30" value="1.5">
+    <label for="vlHi">鏡頭最高高度（公尺）</label><input id="vlHi" type="number" step="0.5" min="0.5" max="30" value="3">
+    <label for="vlFar">最遠看多遠（公尺）</label><input id="vlFar" type="number" step="5" min="5" max="240" value="40">
+    <p class="apmsg" id="vlMsg" role="alert"></p>
+    <div class="ubtns"><button type="button" class="tbtn" id="vlClose">關閉</button><button type="button" class="tbtn" id="vlOff">解除鎖定</button><button type="button" class="tbtn" id="vlOn" style="background:var(--red);color:#fff;border-color:var(--red)">鎖定／更新</button></div>
+  </dialog>
   <dialog id="applyDlg">
     <h2 tabindex="-1" autofocus>申請帳號</h2>
     <p class="note">送出後，管理者審核完成會用您填的信箱回覆。請填寫正確的信箱。</p>
@@ -570,8 +580,16 @@ html,body{touch-action:manipulation}
           <li><b>放置</b>：從「資源與物件」點一個物件，再點地面放下；按住 Shift 再點可連續放置，Esc 取消。</li>
           <li><b>選取</b>：點物件（名牌會變黃綠色），右側會出現設定面板，可改名稱、轉向、刪除。</li>
           <li><b>移動</b>：選取後拖曳；拖不動時可按<b>方向鍵</b>微調（Shift 加大距離），或按 <b>M</b>／「點地移動」再點新位置。</li>
-          <li><b>鏡頭</b>：WASD 平移、Q／E 升降，滑鼠拖曳旋轉、滾輪縮放。<b>R</b> 轉向、<b>L</b> 開關名牌、<b>Del</b> 刪除。</li>
+          <li><b>鏡頭</b>：WASD 平移、Q／E 升降，滑鼠拖曳旋轉、滾輪縮放（教官鎖定視角時，高度與距離會受限）。<b>R</b> 轉向、<b>L</b> 開關名牌、<b>Del</b> 刪除。</li>
           <li>連線場次中，學員看不到「資源與物件」，由教官放置並指派；單機練習則可自行擺放。</li>
+        </ul>
+        <h3>演練流程與講評</h3>
+        <ul>
+          <li><b>腳本與倍速</b>：右上角「腳本」可看整份演練腳本，並調時間倍速（1 到 8 倍）、勾選是否「依時間自動發布」與「鏡頭跟隨」，也能「立即發布」或略過某一則。單機練習的人都可以使用；連線時只有教官能調。</li>
+          <li><b>演練結束</b>：單機練習或教官按右上角「演練結束」，畫面中間會跳出 <b>HOTWASH 講評</b>，列出出勤回報、到場 Size up、ICP 建立、安全管制、設立目標並編組分派執行等檢討項目。教官（或單機的你）可逐項勾選，連線時學員看得到同步結果；講完按「關閉講評」，也可「複製紀錄」做 AAR。</li>
+          <li><b>學員視角鎖定（連線教官）</b>：教官按上方「學員視角」，可讓所有學員的鏡頭貼近地面、不能俯視。預設高度 1.5 到 3 公尺、最遠看 40 公尺，數字可自行微調；再按一次即可更新或解除。鎖定時學員仍可用 WASD 走動，上下樓層也照常，教官自己不受影響。</li>
+          <li><b>意見回饋</b>：演練後歡迎在這裡或講評畫面最下方按「意見回饋」，告訴我們哪裡好用、哪裡要改。</li>
+          <li>系統會記錄登入時間與選擇的情境，供訓練統計使用。</li>
         </ul>
         <h3>選取物件後可調的參數</h3>
         <ul>
@@ -1314,6 +1332,14 @@ if(fdb)(async()=>{try{
   const el=$('#visitCnt');el.textContent='今日 '+(b.val()||0).toLocaleString()+' 人次．累計 '+(a.val()||0).toLocaleString()+' 人次';el.hidden=false;
 }catch(err){console.warn('計數器未啟用',err&&err.code||err)}})();
 const isTrainee=()=>NET.on&&!NET.host;
+let VL={on:false,lo:1.5,hi:3,far:40};
+function applyViewLock(v,quiet){const was=VL.on;VL=v&&v.on?{on:true,lo:+v.lo||1.5,hi:+v.hi||3,far:+v.far||40}:{on:false,lo:VL.lo,hi:VL.hi,far:VL.far};
+  const en=VL.on&&isTrainee();controls.screenSpacePanning=!en;controls.minDistance=en?1.5:5;controls.maxDistance=en?VL.far:240;
+  const b=$('#vlBtn');if(b){b.classList.toggle('on',VL.on);b.textContent=VL.on?'學員視角：鎖定中':'學員視角'}
+  if(!quiet&&was!==VL.on&&isTrainee())flash(VL.on?'教官已鎖定地面視角':'教官已解除視角鎖定')}
+function clampLock(){const base=(S.bld&&S.view!=null)?S.view*HB.H:0,lo=base+VL.lo,hi=base+Math.max(VL.hi,VL.lo),t=controls.target;
+  const off=camera.position.clone().sub(t),d=off.length();if(d>VL.far){off.multiplyScalar(VL.far/d);camera.position.copy(t).add(off)}
+  camera.position.y=Math.min(hi,Math.max(lo,camera.position.y));t.y=Math.min(hi,Math.max(base+.3,t.y))}
 function canEdit(e){return !isTrainee()||e.owner===CID||(NET.me.pos==='指揮官'&&CATALOG[e.type].cat!=='env')}
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
@@ -1684,7 +1710,7 @@ function attach(){const r=NET.ref;
   r.child('log').on('child_added',s=>{S.log.push(s.val());renderLog()});
   NET.injQ=r.child('injects').orderByChild('ts').startAt(serverNow()-1000);
   NET.injQ.on('child_added',s=>{const v=s.val();if(!v||v.by===CID)return;showInject(v.text,v.p?P(v.p[0],v.p[1],v.p[2]):null,$('#followCam').checked)});
-  r.child('meta').on('value',s=>{if(!s.exists()){if(NET.on)sessionEnded();return}NET.meta=s.val();applyNight(!!NET.meta.night);applyHotwash(NET.meta.hotwash)});
+  r.child('meta').on('value',s=>{if(!s.exists()){if(NET.on)sessionEnded();return}NET.meta=s.val();applyNight(!!NET.meta.night);applyHotwash(NET.meta.hotwash);applyViewLock(NET.meta.view)});
   r.child('players').on('value',s=>{NET.players=s.val()||{};renderRoster();if(S.sel)updateInspector();renderSceneList()});
   const me=r.child('players/'+CID);me.set({name:NET.me.name,pos:NET.me.pos,host:NET.host,ts:firebase.database.ServerValue.TIMESTAMP});me.onDisconnect().remove();
   const url=location.origin+location.pathname+'?s='+NET.code;
@@ -1693,7 +1719,7 @@ function attach(){const r=NET.ref;
   $('#endSess').style.display=NET.host?'':'none';
   $('#clockBtn').style.display=NET.host?'':'none';
   flash(NET.host?`場次 ${NET.code} 已建立，請學員掃描 QR Code 加入`:`已加入場次 ${NET.code}`)}
-function leaveSession(silent){document.body.classList.remove('net-trainee');applyNight(false);applyHotwash(null);if(!NET.ref){NET.on=false;return}const r=NET.ref;
+function leaveSession(silent){document.body.classList.remove('net-trainee');applyNight(false);applyHotwash(null);applyViewLock(null,true);if(!NET.ref){NET.on=false;return}const r=NET.ref;
   ['ents','log','meta','players'].forEach(k=>r.child(k).off());if(NET.injQ)NET.injQ.off();
   if(NET.on){const me=r.child('players/'+CID);me.onDisconnect().cancel();me.remove()}
   NET.on=false;NET.ref=null;NET.code=null;NET.host=false;NET.players={};NET.meta=null;
@@ -1730,7 +1756,7 @@ function launch(data,opt={}){
     else{log(opt.online&&!NET.host?'加入場次':'回到場次','sys');if(opt.online&&!NET.host)logEvt('加入場次',sc.name,true)};camera.position.set(...(md?md.cam:sc.cam));controls.target.set(...(md?md.tgt:sc.tgt))}
   renderLog();
   $('#scenName').textContent=`${sc.name}・${NET.on?(NET.host?'教官':NET.me.label):(S.role==='ctrl'?'主控':'學員')}`;
-  $('#injectBtn').style.display=S.role==='ctrl'?'':'none';$('#endDrillBtn').style.display=(!NET.on||NET.host)?'':'none';$('#tipBtn').style.display=S.role==='ctrl'?'':'none';$('#modSaveBtn').style.display=(S.role==='ctrl'&&AUTH.token&&AUTH.user&&AUTH.user.key!=='tr'&&(!NET.on||NET.host))?'':'none';if(S.role!=='ctrl')$('#tipPanel').classList.remove('show');
+  $('#injectBtn').style.display=S.role==='ctrl'?'':'none';$('#endDrillBtn').style.display=(!NET.on||NET.host)?'':'none';$('#tipBtn').style.display=S.role==='ctrl'?'':'none';$('#vlBtn').style.display=(NET.on&&NET.host)?'':'none';$('#modSaveBtn').style.display=(S.role==='ctrl'&&AUTH.token&&AUTH.user&&AUTH.user.key!=='tr'&&(!NET.on||NET.host))?'':'none';if(S.role!=='ctrl')$('#tipPanel').classList.remove('show');
   if(S.role!=='ctrl'&&S.cat==='env')S.cat='all';
   renderTabs();renderItems();renderSceneList();
   document.body.classList.toggle('net-trainee',!!(NET.on&&!NET.host));applyNight(NET.on&&NET.meta?!!NET.meta.night:false);
@@ -1752,7 +1778,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clk.getDelta(),.05
   if(keys.w)mv.add(fwd);if(keys.s)mv.sub(fwd);if(keys.d)mv.add(rgt);if(keys.a)mv.sub(rgt);
   if(keys.q||keys.e){const y=(keys.e?1:-1)*20*dt;camera.position.y=Math.max(3,camera.position.y+y)}
   if(mv.lengthSq()){const sp=Math.max(10,camera.position.distanceTo(controls.target)*.9)*dt*(keys.shift?2.5:1);mv.normalize().multiplyScalar(sp);camera.position.add(mv);controls.target.add(mv)}
-  controls.update();
+  controls.update();if(VL.on&&isTrainee())clampLock();
   entities.forEach(e=>{if(e.obj.userData.anim)e.obj.userData.anim(t)});
   if(S.ghost&&S.ghost.userData.anim)S.ghost.userData.anim(t);
   if(S.bld)entities.forEach(e=>{e.obj.visible=S.view==null||e.obj.position.y<=S.view*HB.H+.5});
@@ -1862,6 +1888,12 @@ function applyHotwash(h){const el=$('#hotwash');if(!el)return;
   const keep=el.querySelector('details')?.open;HW.open=true;HW.checked=h.checked||{};HW.elapsed=h.elapsed||0;hwRender();el.classList.add('show');if(keep){const d=el.querySelector('details');if(d)d.open=true}}
 $('#endDrillBtn').onclick=()=>{if(!hwCtl())return;logEvt('演練結束',(SCEN[S.scen]||{}).name||'');const el=S.elapsed;setClock({run:false});S.run=false;log('演練結束，進入 HOTWASH 講評','sys');
   const h={open:true,checked:{},elapsed:el};if(NET.on)NET.ref.child('meta').update({hotwash:h});else applyHotwash(h)};
+$('#vlBtn').onclick=()=>{if(!(NET.on&&NET.host))return;$('#vlLo').value=VL.lo;$('#vlHi').value=VL.hi;$('#vlFar').value=VL.far;$('#vlMsg').textContent='';$('#vlDlg').showModal()};
+$('#vlClose').onclick=()=>$('#vlDlg').close();
+$('#vlOff').onclick=()=>{if(NET.on&&NET.host){NET.ref.child('meta').update({view:null});log('教官解除學員視角鎖定','sys')}$('#vlDlg').close()};
+$('#vlOn').onclick=()=>{const lo=+$('#vlLo').value,hi=+$('#vlHi').value,far=+$('#vlFar').value,m=$('#vlMsg');
+  if(!(lo>=.5&&lo<=30)||!(hi>=lo&&hi<=30)||!(far>=5&&far<=240)){m.textContent='請確認：最低 ≥ 0.5、最高 ≥ 最低（都不超過 30）、最遠在 5～240 之間。';return}
+  if(!(NET.on&&NET.host))return;NET.ref.child('meta').update({view:{on:true,lo,hi,far}});log(`教官鎖定學員視角（高度 ${lo}～${hi} m、最遠 ${far} m）`,'sys');$('#vlDlg').close()};
 $('#hotwash').addEventListener('change',ev=>{const t=ev.target;if(!t.dataset||t.dataset.hw==null||!hwCtl())return;const i=+t.dataset.hw;
   if(NET.on)NET.ref.child('meta/hotwash/checked/'+i).set(t.checked?true:null);else{HW.checked[i]=t.checked;applyHotwash({open:true,checked:HW.checked,elapsed:HW.elapsed})}});
 $('#hotwash').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;
