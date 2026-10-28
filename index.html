@@ -445,7 +445,7 @@ html,body{touch-action:manipulation}
       <p class="note" id="lMsg" role="alert"></p>
       <p class="note" style="font-size:12px">本系統會記錄登入時間與選擇的情境，供訓練統計使用。</p>
       <button type="button" class="tbtn" id="lDemo" hidden>單機試用（未連接登入服務）</button>
-      <button type="button" class="tbtn" id="lGuest" hidden>直接試玩（免登入・單機學員模式）</button>
+      <button type="button" class="tbtn" id="lGuest" hidden>直接試玩（免登入，選教官或學員）</button>
       <button type="button" class="tbtn" id="lApply" hidden>還沒有帳號？申請帳號</button>
       <div class="introWrap">
         <h3 class="vtitle">① 系統介紹（約 2 分鐘）</h3>
@@ -473,6 +473,14 @@ html,body{touch-action:manipulation}
     </div>
   </dialog>
 
+  <dialog id="guestDlg">
+    <h2 tabindex="-1" autofocus>免登入試玩</h2>
+    <p class="note">請先填寫單位與姓名，再選擇身分。教官可建立連線場次、發布狀況；學員可輸入房號加入場次，或單機練習。</p>
+    <label for="gUnit">單位（例：成功分隊）</label><input id="gUnit" maxlength="30" autocomplete="organization">
+    <label for="gName">姓名</label><input id="gName" maxlength="20" autocomplete="name">
+    <p class="apmsg" id="gMsg" role="alert"></p>
+    <div class="ubtns"><button type="button" class="tbtn" id="gClose">取消</button><button type="button" class="tbtn" id="gTr">以學員身分進入</button><button type="button" class="tbtn" id="gIns" style="background:var(--red);color:#fff;border-color:var(--red)">以教官身分進入</button></div>
+  </dialog>
   <dialog id="actDlg">
     <h2 tabindex="-1" autofocus id="actTitle">誰要操作這個戰術？</h2>
     <p class="note">勾選的消防員會直接移到戰術物件旁，並標上任務編組。不需要的話按「略過」。</p>
@@ -1886,7 +1894,7 @@ const AUTH={user:null,token:''};
 const ssGet=k=>{try{return sessionStorage.getItem(k)}catch(e){return null}};
 const ssSet=(k,v)=>{try{sessionStorage.setItem(k,v)}catch(e){}};
 const ssDel=k=>{try{sessionStorage.removeItem(k)}catch(e){}};
-function logEvt(evt,scen,online){if(!GAS_URL)return;try{const o=online!=null?online:NET.on;gas({type:'log',token:AUTH.token||'',evt,scen:scen||'',mode:o?'連線':'單機',seat:o?(NET.host?'教官':(NET.me&&NET.me.label)||''):(S.role==='ctrl'?'主控':'學員'),room:o?NET.code||'':''}).catch(()=>{})}catch(e){}}
+function logEvt(evt,scen,online){if(!GAS_URL)return;try{const o=online!=null?online:NET.on;const g=(!AUTH.token&&AUTH.user&&AUTH.user.acct==='guest')?{gunit:AUTH.user.gunit,gname:AUTH.user.gname,grole:AUTH.user.role}:{};gas({...g,type:'log',token:AUTH.token||'',evt,scen:scen||'',mode:o?'連線':'單機',seat:o?(NET.host?'教官':(NET.me&&NET.me.label)||''):(S.role==='ctrl'?'主控':'學員'),room:o?NET.code||'':''}).catch(()=>{})}catch(e){}}
 async function gas(body){const r=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});return r.json()}
 const ROLE_NAME={admin:'管理員',ins:'教官',tr:'學員'};
 function roleKey(zh){return zh==='管理員'?'admin':zh==='教官'?'ins':'tr'}
@@ -1894,14 +1902,20 @@ async function loadMarquee(){
   if(!GAS_URL)return;
   try{const r=await fetch(GAS_URL+'?action=marquee');const j=await r.json();const items=(j&&j.items)||[];
     $('#lApply').hidden=!(j&&j.apply!==false);   // 是否開放申請帳號，由試算表「跑馬燈」分頁 E5 控制
-    if(j&&j.login===false){$('#lGuest').hidden=false;$('#lLead').textContent='目前開放免登入試玩（單機、學員模式）。教官請用帳號登入，才能使用完整功能。'}
+    if(j&&j.login===false){$('#lGuest').hidden=false;$('#lLead').textContent='目前開放免登入試玩：請填寫單位與姓名，選擇以教官或學員身分進入。也可以用帳號登入。'}
     if(!items.length)return;const m=$('#marq');m.querySelector('span').textContent=items.join('　　◆　　');m.style.setProperty('--mqs',(j.speed||30)+'s');m.hidden=false}
   catch(err){console.error(err)}}
-function enterGuest(){AUTH.user={acct:'guest',name:'訪客',role:'訪客',key:'tr'};AUTH.token='';logEvt('訪客進入','',false);
+function enterGuest(key,unit,name){const zh=key==='ins'?'教官':'學員';
+  AUTH.user={acct:'guest',name:`${unit} ${name}`,gunit:unit,gname:name,role:'訪客'+zh,key};AUTH.token='';logEvt('訪客進入','',false);
   $('#login').classList.add('hide');
-  $('#start').classList.add('guest');$('#userBtn').style.display='';$('#userBtn').textContent='訪客（單機・學員）';
-  applyView('tr');$('#jName').value='訪客';setRole('trainee')}
-$('#lGuest').onclick=enterGuest;
+  $('#userBtn').style.display='';$('#userBtn').textContent=`${unit} ${name}（訪客・${zh}）`;
+  applyView(key)}
+$('#lGuest').onclick=()=>{$('#gMsg').textContent='';$('#guestDlg').showModal()};
+$('#gClose').onclick=()=>$('#guestDlg').close();
+function guestGo(key){const unit=$('#gUnit').value.trim(),name=$('#gName').value.trim();
+  if(!unit||!name){$('#gMsg').textContent='請先填寫單位與姓名';return}
+  $('#guestDlg').close();enterGuest(key,unit,name)}
+$('#gIns').onclick=()=>guestGo('ins');$('#gTr').onclick=()=>guestGo('tr');
 function applyView(v){
   const ins=v==='ins',u=AUTH.user;
   document.querySelector('[data-role="ctrl"]').style.display=(ins||u.key==='admin')?'':'none';
