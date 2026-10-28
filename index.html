@@ -271,6 +271,9 @@ dialog h2{margin:0 0 10px;font-size:16px}
 .lbox form{display:flex;flex-direction:column;gap:10px}
 .lbox input,#fbDlg select,#fbDlg textarea{width:100%;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:9px 12px;font:inherit}
 .lbox .tbtn{padding:10px 12px}
+#guestBox{display:flex;flex-direction:column;gap:10px}
+#guestBox[hidden],#loginForm[hidden]{display:none}
+.gBtns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 #lMsg{min-height:1.4em;color:var(--red)}
 #userDlg .ubtns,#fbDlg .ubtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 #fbDlg label{display:block;margin:10px 0 4px;color:var(--muted);font-size:13px}
@@ -437,6 +440,12 @@ html,body{touch-action:manipulation}
     <div class="sbox lbox">
       <h1><i></i>ICS 3D 指揮演練</h1>
       <p class="lead" id="lLead">請使用教官發給您的帳號登入。</p>
+      <div id="guestBox" hidden>
+        <input id="gUnit" maxlength="30" autocomplete="organization" placeholder="單位（例：成功分隊）">
+        <input id="gName" maxlength="20" autocomplete="name" placeholder="姓名">
+        <p class="note" id="gMsg" role="alert" style="color:var(--red);min-height:1.2em"></p>
+        <div class="gBtns"><button type="button" class="tbtn" id="gTr">以學員身分進入</button><button type="button" class="tbtn" id="gIns" style="background:var(--red);color:#fff;border-color:var(--red)">以教官身分進入</button></div>
+      </div>
       <form id="loginForm">
         <input id="lUser" autocomplete="username" placeholder="帳號" autocapitalize="off" spellcheck="false">
         <input id="lPass" type="password" autocomplete="current-password" placeholder="密碼">
@@ -473,14 +482,6 @@ html,body{touch-action:manipulation}
     </div>
   </dialog>
 
-  <dialog id="guestDlg">
-    <h2 tabindex="-1" autofocus>免登入試玩</h2>
-    <p class="note">請先填寫單位與姓名，再選擇身分。教官可建立連線場次、發布狀況；學員可輸入房號加入場次，或單機練習。</p>
-    <label for="gUnit">單位（例：成功分隊）</label><input id="gUnit" maxlength="30" autocomplete="organization">
-    <label for="gName">姓名</label><input id="gName" maxlength="20" autocomplete="name">
-    <p class="apmsg" id="gMsg" role="alert"></p>
-    <div class="ubtns"><button type="button" class="tbtn" id="gClose">取消</button><button type="button" class="tbtn" id="gTr">以學員身分進入</button><button type="button" class="tbtn" id="gIns" style="background:var(--red);color:#fff;border-color:var(--red)">以教官身分進入</button></div>
-  </dialog>
   <dialog id="actDlg">
     <h2 tabindex="-1" autofocus id="actTitle">誰要操作這個戰術？</h2>
     <p class="note">勾選的消防員會直接移到戰術物件旁，並標上任務編組。不需要的話按「略過」。</p>
@@ -1902,7 +1903,7 @@ async function loadMarquee(){
   if(!GAS_URL)return;
   try{const r=await fetch(GAS_URL+'?action=marquee');const j=await r.json();const items=(j&&j.items)||[];
     $('#lApply').hidden=!(j&&j.apply!==false);   // 是否開放申請帳號，由試算表「跑馬燈」分頁 E5 控制
-    if(j&&j.login===false){$('#lGuest').hidden=false;$('#lLead').textContent='目前開放免登入試玩：請填寫單位與姓名，選擇以教官或學員身分進入。也可以用帳號登入。'}
+    if(j&&j.login===false){$('#guestBox').hidden=false;$('#loginForm').hidden=true;$('#lMsg').hidden=true;$('#lApply').hidden=true;$('#lLead').textContent='目前開放免登入試玩：請填寫單位與姓名，再選擇以教官或學員身分進入。'}
     if(!items.length)return;const m=$('#marq');m.querySelector('span').textContent=items.join('　　◆　　');m.style.setProperty('--mqs',(j.speed||30)+'s');m.hidden=false}
   catch(err){console.error(err)}}
 function enterGuest(key,unit,name){const zh=key==='ins'?'教官':'學員';
@@ -1910,11 +1911,9 @@ function enterGuest(key,unit,name){const zh=key==='ins'?'教官':'學員';
   $('#login').classList.add('hide');
   $('#userBtn').style.display='';$('#userBtn').textContent=`${unit} ${name}（訪客・${zh}）`;
   applyView(key)}
-$('#lGuest').onclick=()=>{$('#gMsg').textContent='';$('#guestDlg').showModal()};
-$('#gClose').onclick=()=>$('#guestDlg').close();
 function guestGo(key){const unit=$('#gUnit').value.trim(),name=$('#gName').value.trim();
   if(!unit||!name){$('#gMsg').textContent='請先填寫單位與姓名';return}
-  $('#guestDlg').close();enterGuest(key,unit,name)}
+  enterGuest(key,unit,name)}
 $('#gIns').onclick=()=>guestGo('ins');$('#gTr').onclick=()=>guestGo('tr');
 function applyView(v){
   const ins=v==='ins',u=AUTH.user;
