@@ -1904,9 +1904,14 @@ async function loadMarquee(){
   if(!GAS_URL)return;
   try{const r=await fetch(GAS_URL+'?action=marquee');const j=await r.json();const items=(j&&j.items)||[];
     $('#lApply').hidden=!(j&&j.apply!==false);   // 是否開放申請帳號，由試算表「跑馬燈」分頁 E5 控制
-    if(j&&j.login===false){$('#guestBox').hidden=false;$('#loginForm').hidden=true;$('#lMsg').hidden=true;$('#lApply').hidden=true;$('#lLead').textContent='目前開放免登入試玩：請填寫單位與姓名，再選擇以教官或學員身分進入。'}
+    const gm=!!(j&&j.login===false);setLoginMode(gm?'guest':'login');if(gm)$('#lApply').hidden=true;lsSet('ics3d:lmode',gm?'guest':'login')
     if(!items.length)return;const m=$('#marq');m.querySelector('span').textContent=items.join('　　◆　　');m.style.setProperty('--mqs',(j.speed||30)+'s');m.hidden=false}
-  catch(err){console.error(err)}}
+  catch(err){console.error(err);setLoginMode('login')}}
+// 登入頁模式：guest=免登入（只顯示單位姓名）、login=帳號密碼、wait=還沒拿到設定（先不顯示輸入欄，避免閃一下登入畫面）
+function setLoginMode(m){const g=m==='guest',w=m==='wait';
+  $('#guestBox').hidden=!g;$('#loginForm').hidden=g||w;$('#lMsg').hidden=g||w;if(g)$('#lApply').hidden=true;
+  $('#lLead').textContent=g?'目前開放免登入試玩：請填寫單位與姓名，再選擇以教官或學員身分進入。':w?'載入中，請稍候…':'請使用教官發給您的帳號登入。'}
+if(GAS_URL){const lm=lsGet('ics3d:lmode');setLoginMode(lm==='guest'||lm==='login'?lm:'wait')}
 function enterGuest(key,unit,name){const zh=key==='ins'?'教官':'學員';
   AUTH.user={acct:'guest',name:`${unit} ${name}`,gunit:unit,gname:name,role:'訪客'+zh,key};AUTH.token='';logEvt('訪客進入','',false);
   $('#login').classList.add('hide');
