@@ -222,6 +222,7 @@ dialog h2{margin:0 0 10px;font-size:16px}
   #palette.open{transform:none}
   #palFold{display:none}
   #inspector{left:8px;right:8px;top:auto;bottom:12px;width:auto}
+  body.moving #inspector{display:none!important}   /* 點地放置／移動時先收起面板，才不會擋住畫面 */
   #logPanel{left:0;right:0;width:auto;top:60px;bottom:0;border-radius:14px 14px 0 0}
   #banner{top:60px}
   #mselPanel,#sessPanel{left:0;right:0;width:auto;top:60px;bottom:0;border-radius:14px 14px 0 0}
@@ -472,9 +473,15 @@ html,body{touch-action:manipulation}
     </div>
   </dialog>
 
+  <dialog id="actDlg">
+    <h2 tabindex="-1" autofocus id="actTitle">誰要操作這個戰術？</h2>
+    <p class="note">勾選的消防員會直接移到戰術物件旁，並標上任務編組。不需要的話按「略過」。</p>
+    <div id="actList" style="display:grid;gap:8px;margin:10px 0;max-height:46vh;overflow:auto"></div>
+    <div class="ubtns"><button type="button" class="tbtn" id="actSkip">略過</button><button type="button" class="tbtn" id="actOk" style="background:var(--red);color:#fff;border-color:var(--red)">指派</button></div>
+  </dialog>
   <dialog id="vlDlg">
     <h2 tabindex="-1" autofocus>學員視角鎖定</h2>
-    <p class="note">鎖定後，所有學員的鏡頭會貼近地面、不能俯視，教官自己不受影響。學員仍可用 WASD 或右鍵拖曳移動位置，上下樓層照常。</p>
+    <p class="note" id="vlNote">鎖定後，所有學員的鏡頭會貼近地面、不能俯視，教官自己不受影響。學員仍可用 WASD 或右鍵拖曳移動位置，上下樓層照常。</p>
     <label for="vlLo">鏡頭最低高度（公尺）</label><input id="vlLo" type="number" step="0.5" min="0.5" max="30" value="1.5">
     <label for="vlHi">鏡頭最高高度（公尺）</label><input id="vlHi" type="number" step="0.5" min="0.5" max="30" value="3">
     <label for="vlFar">最遠看多遠（公尺）</label><input id="vlFar" type="number" step="5" min="5" max="240" value="40">
@@ -587,7 +594,9 @@ html,body{touch-action:manipulation}
         <ul>
           <li><b>腳本與倍速</b>：右上角「腳本」可看整份演練腳本，並調時間倍速（1 到 8 倍）、勾選是否「依時間自動發布」與「鏡頭跟隨」，也能「立即發布」或略過某一則。單機練習的人都可以使用；連線時只有教官能調。</li>
           <li><b>演練結束</b>：單機練習或教官按右上角「演練結束」，畫面中間會跳出 <b>HOTWASH 講評</b>，列出出勤回報、到場 Size up、ICP 建立、安全管制、設立目標並編組分派執行等檢討項目。教官（或單機的你）可逐項勾選，連線時學員看得到同步結果；講完按「關閉講評」，也可「複製紀錄」做 AAR。</li>
-          <li><b>學員視角鎖定（連線教官）</b>：教官按上方「學員視角」，可讓所有學員的鏡頭貼近地面、不能俯視。預設高度 1.5 到 3 公尺、最遠看 40 公尺，數字可自行微調；再按一次即可更新或解除。鎖定時學員仍可用 WASD 走動，上下樓層也照常，教官自己不受影響。</li>
+          <li><b>學員視角鎖定（連線教官）</b>：教官按上方「學員視角」，可讓所有學員的鏡頭貼近地面、不能俯視。預設高度 1.5 到 3 公尺、最遠看 40 公尺，數字可自行微調；再按一次即可更新或解除。鎖定時學員仍可用 WASD 走動，上下樓層也照常，教官自己不受影響。單機練習也有「視角鎖定」按鈕，鎖的是自己的鏡頭。</li>
+          <li><b>放置戰術後指派人員</b>：從「戰術」放置物件後，會跳出視窗讓你勾選要操作的消防員，確定後他們會直接移到戰術旁並標上任務編組，不必再一個個搬人。場景裡要先有消防員。</li>
+          <li><b>手機放置／移動</b>：點地放置或「點地移動」時，物件設定面板會先收起來，完成後自動回來，才不會擋住畫面。</li>
           <li><b>意見回饋</b>：演練後歡迎在這裡或講評畫面最下方按「意見回饋」，告訴我們哪裡好用、哪裡要改。</li>
           <li>系統會記錄登入時間與選擇的情境，供訓練統計使用。</li>
         </ul>
@@ -1399,10 +1408,11 @@ if(fdb)(async()=>{try{
   const el=$('#visitCnt');el.textContent='今日 '+(b.val()||0).toLocaleString()+' 人次．累計 '+(a.val()||0).toLocaleString()+' 人次';el.hidden=false;
 }catch(err){console.warn('計數器未啟用',err&&err.code||err)}})();
 const isTrainee=()=>NET.on&&!NET.host;
+const vlSelf=()=>!NET.on||!NET.host;   /* 視角鎖定作用在自己的鏡頭：單機、連線學員；連線教官不受影響 */
 let VL={on:false,lo:1.5,hi:3,far:40};
 function applyViewLock(v,quiet){const was=VL.on;VL=v&&v.on?{on:true,lo:+v.lo||1.5,hi:+v.hi||3,far:+v.far||40}:{on:false,lo:VL.lo,hi:VL.hi,far:VL.far};
-  const en=VL.on&&isTrainee();controls.screenSpacePanning=!en;controls.minDistance=en?1.5:5;controls.maxDistance=en?VL.far:240;
-  const b=$('#vlBtn');if(b){b.classList.toggle('on',VL.on);b.textContent=VL.on?'學員視角：鎖定中':'學員視角'}
+  const en=VL.on&&vlSelf();controls.screenSpacePanning=!en;controls.minDistance=en?1.5:5;controls.maxDistance=en?VL.far:240;
+  const b=$('#vlBtn');if(b){b.classList.toggle('on',VL.on);b.textContent=NET.on?(VL.on?'學員視角：鎖定中':'學員視角'):(VL.on?'視角：鎖定中':'視角鎖定')}
   if(!quiet&&was!==VL.on&&isTrainee())flash(VL.on?'教官已鎖定地面視角':'教官已解除視角鎖定')}
 function clampLock(){const base=(S.bld&&S.view!=null)?S.view*HB.H:0,lo=base+VL.lo,hi=base+Math.max(VL.hi,VL.lo),t=controls.target;
   const off=camera.position.clone().sub(t),d=off.length();if(d>VL.far){off.multiplyScalar(VL.far/d);camera.position.copy(t).add(off)}
@@ -1509,8 +1519,21 @@ function startPlacing(type){cancelPlacing();S.placing=type;const g=CATALOG[type]
   g.traverse(o=>{if(o.isMesh){o.material=[].concat(o.material).map(m=>{const c=m.clone();c.transparent=true;c.opacity=Math.min(c.opacity??1,.45);c.depthWrite=false;return c});if(o.material.length===1)o.material=o.material[0];o.castShadow=false}});
   g.visible=false;scene.add(g);S.ghost=g;
   $('#placeTip').textContent=`點地面放置「${CATALOG[type].name}」，Esc 取消`;$('#placeTip').classList.add('show');
-  $('#palette').classList.remove('open');renderItems()}
-function cancelPlacing(){if(S.ghost){scene.remove(S.ghost);disposeObj(S.ghost)}S.ghost=null;S.placing=null;$('#placeTip').classList.remove('show');renderItems()}
+  $('#palette').classList.remove('open');renderItems();syncMoving()}
+function cancelPlacing(){if(S.ghost){scene.remove(S.ghost);disposeObj(S.ghost)}S.ghost=null;S.placing=null;$('#placeTip').classList.remove('show');renderItems();syncMoving()}
+function syncMoving(){document.body.classList.toggle('moving',!!(S.placing||S.moveTo))}
+/* 放置「戰術」物件後，詢問要由哪幾位消防員操作；選定的人員直接移到戰術位置旁 */
+function askCrew(t){const list=[...entities.values()].filter(x=>x.type==='ff'&&canEdit(x));
+  if(!list.length){flash('場景中沒有消防員可以指派，請先放置消防員');return}
+  $('#actTitle').textContent=`誰要操作「${t.name}」？`;
+  $('#actList').innerHTML=list.map(f=>`<label class="actrow"><input type="checkbox" value="${f.id}" style="width:auto"> <span>${esc(f.name)}${f.prm&&f.prm.task?`（${esc(f.prm.task)}）`:''}</span></label>`).join('');
+  $('#actDlg').dataset.tid=t.id;$('#actDlg').showModal()}
+$('#actSkip').onclick=()=>$('#actDlg').close();
+$('#actOk').onclick=()=>{const t=entities.get($('#actDlg').dataset.tid),ids=[...document.querySelectorAll('#actList input:checked')].map(i=>i.value);$('#actDlg').close();
+  if(!t||!ids.length)return;const crew=ids.map(id=>entities.get(id)).filter(Boolean),n=crew.length,p=t.obj.position;
+  crew.forEach((f,i)=>{const a=n===1?0:i/n*Math.PI*2,r=n===1?1.3:1.8;f.obj.position.set(p.x+Math.cos(a)*r,p.y,p.z+Math.sin(a)*r);
+    if(CATALOG[f.type].task)setPrm(f,{task:t.name.slice(0,12)});push(f,200)});
+  updateInspector();renderSceneList();log(`${crew.map(f=>`「${f.name}」`).join('、')}前往「${t.name}」位置操作`,'sys')};
 
 /* ---------- 指標互動 ---------- */
 const ray=new THREE.Raycaster(),groundPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0),tmpV=new THREE.Vector3();
@@ -1539,7 +1562,7 @@ window.addEventListener('pointerup',ev=>{ptrs.delete(ev.pointerId);if(!down)retu
   if(drag){const de=drag.e;if(drag.moved){const p=de.obj.position;log(`移動「${de.name}」至 ${p.x.toFixed(0)}, ${p.z.toFixed(0)}`)}drag=null;controls.enabled=true;push(de,150)}
   else if(dist<6&&ev.target===renderer.domElement){const p=ndc(ev);
     if(S.moveTo){const g=floorAt(p),me=entities.get(S.sel);if(g&&me&&canEdit(me)){if(S.moveTo==='end'){setPrm(me,{ex:Math.round(g.x*100)/100,ez:Math.round(g.z*100)/100});push(me);log(`設定「${me.name}」終點 ${g.x.toFixed(0)}, ${g.z.toFixed(0)}`)}else{me.obj.position.set(g.x,CATALOG[me.type].fly?me.obj.position.y:g.y,g.z);push(me,200);log(`移動「${me.name}」至 ${g.x.toFixed(0)}, ${g.z.toFixed(0)}`)}cancelMove();updateInspector()}}
-    else if(S.placing){const g=floorAt(p);if(g){const rot=S.ghost?S.ghost.rotation.y:0;const e=addEntity(S.placing,g.x,g.z,rot,null,1,false,g.y);if(!ev.shiftKey)cancelPlacing();select(e.id)}}
+    else if(S.placing){const g=floorAt(p);if(g){const rot=S.ghost?S.ghost.rotation.y:0;const e=addEntity(S.placing,g.x,g.z,rot,null,1,false,g.y);const isAct=CATALOG[e.type].cat==='act';if(!ev.shiftKey)cancelPlacing();select(e.id);if(isAct&&!ev.shiftKey)askCrew(e)}}
     else{const hit=pick(p);select(hit?hit.id:null)}}
   down=null});
 
@@ -1573,8 +1596,8 @@ function nudge(k,st){const e=entities.get(S.sel);if(!e)return;if(!canEdit(e))ret
   p.x=nx;p.z=nz;push(e,100);updateInspector();
   clearTimeout(nudgeT);nudgeT=setTimeout(()=>log(`移動「${e.name}」至 ${p.x.toFixed(0)}, ${p.z.toFixed(0)}`),700)}
 function startMove(mode='move'){const e=entities.get(S.sel);if(!e)return;cancelPlacing();S.moveTo=mode;if(mode==='move')$('#mvBtn').classList.add('on');
-  $('#placeTip').textContent=mode==='end'?`點地面指定「${e.name}」的終點，Esc 取消`:`點地面指定「${e.name}」的新位置，Esc 取消`;$('#placeTip').classList.add('show')}
-function cancelMove(){if(!S.moveTo)return;S.moveTo=false;$('#mvBtn').classList.remove('on');if(!S.placing)$('#placeTip').classList.remove('show')}
+  $('#placeTip').textContent=mode==='end'?`點地面指定「${e.name}」的終點，Esc 取消`:`點地面指定「${e.name}」的新位置，Esc 取消`;$('#placeTip').classList.add('show');syncMoving()}
+function cancelMove(){if(!S.moveTo)return;S.moveTo=false;$('#mvBtn').classList.remove('on');if(!S.placing)$('#placeTip').classList.remove('show');syncMoving()}
 $('#mvBtn').onclick=()=>{const e=entities.get(S.sel);if(!e)return;if(!canEdit(e))return denied();S.moveTo?cancelMove():startMove()};
 /* 物件參數面板：著裝層級、熱暖冷區、指揮站／集結區增派人員 */
 const ATTIRES=['一般','SCBA','A防','救生衣','水域裝備'],TASKS=['搜救','射水','通風','破壞','救護','安全官','水源','指揮幕僚','待命'];
@@ -1823,7 +1846,7 @@ function launch(data,opt={}){
     else{log(opt.online&&!NET.host?'加入場次':'回到場次','sys');if(opt.online&&!NET.host)logEvt('加入場次',sc.name,true)};camera.position.set(...(md?md.cam:sc.cam));controls.target.set(...(md?md.tgt:sc.tgt))}
   renderLog();
   $('#scenName').textContent=`${sc.name}・${NET.on?(NET.host?'教官':NET.me.label):(S.role==='ctrl'?'主控':'學員')}`;
-  $('#injectBtn').style.display=S.role==='ctrl'?'':'none';$('#endDrillBtn').style.display=(!NET.on||NET.host)?'':'none';$('#tipBtn').style.display=S.role==='ctrl'?'':'none';$('#vlBtn').style.display=(NET.on&&NET.host)?'':'none';$('#modSaveBtn').style.display=(S.role==='ctrl'&&AUTH.token&&AUTH.user&&AUTH.user.key!=='tr'&&(!NET.on||NET.host))?'':'none';if(S.role!=='ctrl')$('#tipPanel').classList.remove('show');
+  $('#injectBtn').style.display=S.role==='ctrl'?'':'none';$('#endDrillBtn').style.display=(!NET.on||NET.host)?'':'none';$('#tipBtn').style.display=S.role==='ctrl'?'':'none';$('#vlBtn').style.display=(!NET.on||NET.host)?'':'none';if(!NET.on)applyViewLock(null,true);$('#modSaveBtn').style.display=(S.role==='ctrl'&&AUTH.token&&AUTH.user&&AUTH.user.key!=='tr'&&(!NET.on||NET.host))?'':'none';if(S.role!=='ctrl')$('#tipPanel').classList.remove('show');
   if(S.role!=='ctrl'&&S.cat==='env')S.cat='all';
   renderTabs();renderItems();renderSceneList();
   document.body.classList.toggle('net-trainee',!!(NET.on&&!NET.host));applyNight(NET.on&&NET.meta?!!NET.meta.night:false);
@@ -1845,7 +1868,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clk.getDelta(),.05
   if(keys.w)mv.add(fwd);if(keys.s)mv.sub(fwd);if(keys.d)mv.add(rgt);if(keys.a)mv.sub(rgt);
   if(keys.q||keys.e){const y=(keys.e?1:-1)*20*dt;camera.position.y=Math.max(3,camera.position.y+y)}
   if(mv.lengthSq()){const sp=Math.max(10,camera.position.distanceTo(controls.target)*.9)*dt*(keys.shift?2.5:1);mv.normalize().multiplyScalar(sp);camera.position.add(mv);controls.target.add(mv)}
-  controls.update();if(VL.on&&isTrainee())clampLock();
+  controls.update();if(VL.on&&vlSelf())clampLock();
   entities.forEach(e=>{if(e.obj.userData.anim)e.obj.userData.anim(t)});
   if(S.ghost&&S.ghost.userData.anim)S.ghost.userData.anim(t);
   if(S.bld)entities.forEach(e=>{e.obj.visible=S.view==null||e.obj.position.y<=S.view*HB.H+.5});
@@ -1955,12 +1978,15 @@ function applyHotwash(h){const el=$('#hotwash');if(!el)return;
   const keep=el.querySelector('details')?.open;HW.open=true;HW.checked=h.checked||{};HW.elapsed=h.elapsed||0;hwRender();el.classList.add('show');if(keep){const d=el.querySelector('details');if(d)d.open=true}}
 $('#endDrillBtn').onclick=()=>{if(!hwCtl())return;logEvt('演練結束',(SCEN[S.scen]||{}).name||'');const el=S.elapsed;setClock({run:false});S.run=false;log('演練結束，進入 HOTWASH 講評','sys');
   const h={open:true,checked:{},elapsed:el};if(NET.on)NET.ref.child('meta').update({hotwash:h});else applyHotwash(h)};
-$('#vlBtn').onclick=()=>{if(!(NET.on&&NET.host))return;$('#vlLo').value=VL.lo;$('#vlHi').value=VL.hi;$('#vlFar').value=VL.far;$('#vlMsg').textContent='';$('#vlDlg').showModal()};
+$('#vlBtn').onclick=()=>{if(NET.on&&!NET.host)return;
+  $('#vlNote').textContent=NET.on?'鎖定後，所有學員的鏡頭會貼近地面、不能俯視，教官自己不受影響。學員仍可用 WASD 或右鍵拖曳移動位置，上下樓層照常。':'鎖定後，你自己的鏡頭會貼近地面、不能俯視，可練習從地面視角判斷現場。仍可用 WASD 或右鍵拖曳移動位置，上下樓層照常。';
+  $('#vlLo').value=VL.lo;$('#vlHi').value=VL.hi;$('#vlFar').value=VL.far;$('#vlMsg').textContent='';$('#vlDlg').showModal()};
 $('#vlClose').onclick=()=>$('#vlDlg').close();
-$('#vlOff').onclick=()=>{if(NET.on&&NET.host){NET.ref.child('meta').update({view:null});log('教官解除學員視角鎖定','sys')}$('#vlDlg').close()};
+$('#vlOff').onclick=()=>{if(NET.on&&NET.host){NET.ref.child('meta').update({view:null});log('教官解除學員視角鎖定','sys')}else if(!NET.on){applyViewLock(null,true);log('解除視角鎖定','sys')}$('#vlDlg').close()};
 $('#vlOn').onclick=()=>{const lo=+$('#vlLo').value,hi=+$('#vlHi').value,far=+$('#vlFar').value,m=$('#vlMsg');
   if(!(lo>=.5&&lo<=30)||!(hi>=lo&&hi<=30)||!(far>=5&&far<=240)){m.textContent='請確認：最低 ≥ 0.5、最高 ≥ 最低（都不超過 30）、最遠在 5～240 之間。';return}
-  if(!(NET.on&&NET.host))return;NET.ref.child('meta').update({view:{on:true,lo,hi,far}});log(`教官鎖定學員視角（高度 ${lo}～${hi} m、最遠 ${far} m）`,'sys');$('#vlDlg').close()};
+  if(!NET.on){applyViewLock({on:true,lo,hi,far},true);log(`鎖定視角（高度 ${lo}～${hi} m、最遠 ${far} m）`,'sys');$('#vlDlg').close();return}
+  if(!NET.host)return;NET.ref.child('meta').update({view:{on:true,lo,hi,far}});log(`教官鎖定學員視角（高度 ${lo}～${hi} m、最遠 ${far} m）`,'sys');$('#vlDlg').close()};
 $('#hotwash').addEventListener('change',ev=>{const t=ev.target;if(!t.dataset||t.dataset.hw==null||!hwCtl())return;const i=+t.dataset.hw;
   if(NET.on)NET.ref.child('meta/hotwash/checked/'+i).set(t.checked?true:null);else{HW.checked[i]=t.checked;applyHotwash({open:true,checked:HW.checked,elapsed:HW.elapsed})}});
 $('#hotwash').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;
