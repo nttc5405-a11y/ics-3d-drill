@@ -743,6 +743,21 @@ function interiorHouse(){const {W,D,H,F}=HB,h=H-.2,wt=.2,it=.12;const root=new T
   root.userData.floors=floors;root.userData.roof=roof;return root}
 function house(w,h,d,wall){const t=windowTex(wall);t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping;const side=mat(0xffffff,{map:t}),roof=mat(0x8d8f8c);
   const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),[mat(wall),mat(wall),roof,roof,side,side]);m.position.y=h/2;m.castShadow=m.receiveShadow=true;return m}
+function bus(){const g=new THREE.Group(),L=12,W=2.6;
+  g.add(box(L,2.9,W,0xf1f1ee,0,2.05,0));
+  g.add(box(L-.8,.95,W+.04,C.glass,-.2,2.7,0));
+  g.add(box(.06,1.6,W*.9,C.glass,L/2+.01,2.55,0));
+  g.add(box(L*.99,.28,W+.05,0xc8102e,0,1.2,0));g.add(box(L*.99,.12,W+.05,0xf2c230,0,.98,0));
+  g.add(box(L,.1,W,0xd9dcdf,0,3.55,0));
+  wheels(g,W,[-L/2+2.2,L/2-1.8],.55,.55);return g}
+function trainCar(mode){const g=new THREE.Group(),L=20,W=3;
+  g.add(box(L,3.2,W,0xdfe3e6,0,2.5,0));g.add(box(L*.995,.5,W+.04,0x1f5fa8,0,1.35,0));g.add(box(L-1.2,.95,W+.04,C.glass,0,2.95,0));
+  g.add(box(L,.18,W-.3,0xb9bec3,0,4.2,0));g.add(box(2.2,.4,2.2,0x8c9196,0,4.5,0));
+  for(const x of[-6.5,6.5])g.add(box(3.2,.6,2.2,0x2b2f33,x,.75,0));
+  wheels(g,W,[-7.4,-5.6,5.6,7.4],.42,.5);
+  if(mode===0)return g;const w=new THREE.Group();
+  if(mode===1){g.rotation.x=.24;g.position.y=.35}else{g.rotation.x=Math.PI/2;g.position.set(0,1.5,-2.5)}
+  w.add(g);return w}
 function tanker(over){const g=new THREE.Group();
   const tank=cyl(1.2,1.2,9.2,0xdfe3e6,-1.6,2.0,0,24);tank.rotation.z=Math.PI/2;g.add(tank);
   for(const x of[-5.2,2.0])g.add(box(.3,.5,2.2,0x8c9196,x,.9,0));
@@ -840,6 +855,10 @@ const CATALOG={
   house:{cat:'ext',name:'透天厝',build(){const g=new THREE.Group();g.add(house(5.2,13,12,'#c9b79c'));return g}},
   tanker:{cat:'ext',name:'化學槽車',build:()=>tanker(false)},
   tankerOver:{cat:'ext',name:'翻覆槽車',build:()=>tanker(true)},
+  bus:{cat:'ext',name:'遊覽車',build:()=>bus(),h:4},
+  trainCar:{cat:'ext',name:'火車車廂',build:()=>trainCar(0),h:4.5},
+  trainTilt:{cat:'ext',name:'傾斜車廂',build:()=>trainCar(1),h:4.5},
+  trainOver:{cat:'ext',name:'側翻車廂',build:()=>trainCar(2),h:4.5},
   smokeLayer:{cat:'env',name:'室內濃煙層',build(){const g=new THREE.Group();const m=new THREE.Mesh(new THREE.BoxGeometry(HB.W-.5,1.2,HB.D-.5),new THREE.MeshBasicMaterial({color:0x2e3236,transparent:true,opacity:.4,depthWrite:false}));m.position.y=HB.H-.85;g.add(m);return g},noShadow:true,flatPick:true,h:3},
   tow:{cat:'ext',name:'拖吊車',build(){const g=truck({len:7,w:2.4,h:1.2,color:0xe0a800,stripe:null});const b=box(4,.25,.25,0x444444,-1.4,2.6,0);b.rotation.z=.35;g.add(b);return g}}
 };
@@ -1096,6 +1115,54 @@ const SCEN={
       {at:900,t:'環保局人員抵達，要求說明洩漏量與流向',fx(){driveIn('car','環保局車輛',47,-laneZ(),0,'e');return P(47,0,-laneZ())}},
       {at:1020,t:'槽車業者回報吸油車及吊車約 30 分鐘後抵達',fx(){addEntity('note',58,-12,0,'業者吸油車、吊車（30 分）',1,true);return P(58,0,-12)}},
       {at:1110,t:'完成止漏，洩漏範圍不再擴大',fx(){const e=findEnt('spill');if(!e)return null;setStatus(e,'已止漏');return e.obj.position.clone()}}]},
+  bus:{name:'遊覽車撞山壁',desc:'山區公路下坡彎道，遊覽車撞山壁，約 10 名傷病患、2 人受困、車頭冒煙漏油',top:'var(--c-ppl)',cam:[30,26,32],tgt:[0,0,-4],
+    env(){road(10);
+      envGroup.add(box(90,18,5,0x8a7c68,0,9,-13));envGroup.add(box(90,7,3.2,0x766a58,0,3.5,-9.6));
+      for(const x of[-30,-18,-7,9,21,33])envGroup.add(box(3.4,2.6,2.4,0x6e6354,x,1.3,-7.4));
+      for(const x of[-40,-10,15,38])tree(x,-20);
+      envGroup.add(box(800,.7,.15,0xc0c4c8,0,.75,6.4));
+      for(let x=-390;x<390;x+=14)tree(x,18+(x%3));},
+    init:[['bus',.4,-2.7,1.35,'遊覽車',1],['civ',-9,-4.5,0,'乘客 01（路邊站立）'],['civ',-10.5,-4.9,.4,'乘客 03（路邊站立）'],['civ',-8,-6,.8,'乘客 04（路邊站立）'],['civ',-11.5,-6.1,.2,'乘客 06（路邊站立）'],
+      ['victim',-5.6,-1.2,.3,'乘客 02（路邊倒地）'],['victim',-6.8,2.4,2.4,'乘客 05（路邊倒地）'],['victim',-4.2,3.6,1.6,'乘客 07（路邊倒地）'],['victim',3.4,-6,.6,'乘客 08（車旁倒地）']],
+    inj:[
+      {at:0,t:'119 報案：台9線南迴公路下坡彎道，遊覽車撞山壁，多人受傷、車頭冒煙，司機稱煞車失靈',fx:()=>P(0,0,-3)},
+      {at:90,t:'第一梯次水箱車 1 輛、救護車 1 輛抵達現場',fx:()=>firstWave([['engine','第一梯次 水箱車',-14],['amb','第一梯次 救護車',-24]])},
+      {at:180,t:'車身前傾卡在山壁，駕駛與前排乘客受困車內',fx(){const e=findEnt('bus');if(!e)return null;setStatus(e,'駕駛、前排乘客受困｜車身不穩');return e.obj.position.clone()}},
+      {at:270,t:'車頭冒白煙（煞車過熱），地面滲漏柴油',fx(){const w=findEnt('wind');addEntity('smoke',3.6,-5.6,w?w.obj.rotation.y:0,'車頭冒煙',.5,true,.8);addEntity('spill',2.2,-5,0,'柴油滲漏',.4,true);return P(3,0,-5.4)}},
+      {at:360,t:'路邊一名傷患呼吸急促、說話只能說幾個字',fx(){const e=findEnt('victim','乘客 02');if(!e)return null;setStatus(e,'呼吸急促');return e.obj.position.clone()}},
+      {at:450,t:'後方彎道有車輛來不及減速，險些衝入現場，需交通管制',fx(){driveIn('car','後方來車',-34,laneZ());return P(-34,0,laneZ())}},
+      {at:540,t:'增援人力與第二輛救護車抵達集結區',fx:()=>reinforce()},
+      {at:630,t:'車頭白煙轉濃，疑有起火風險，要求水線待命',fx:()=>grow('smoke',1.8)},
+      {at:720,t:'受困駕駛意識變差、呼吸變淺，需加速解困',fx(){const e=findEnt('bus');if(!e)return null;setStatus(e,'駕駛生命徵象惡化');return e.obj.position.clone()}},
+      {at:810,t:'警方與公路主管單位抵達，協助封閉車道',fx(){driveIn('police','警車',-40,-laneZ(),0,'e');return P(-40,0,-laneZ())}},
+      {at:900,t:'一名輕傷乘客情緒激動，欲回車內拿行李',fx(){const e=findEnt('civ','乘客 03');if(!e)return null;setStatus(e,'欲回車內');return e.obj.position.clone()}},
+      {at:1020,t:'受困駕駛救出，準備送醫',fx(){const e=addEntity('victim',-1.5,2.6,0,'駕駛（已救出）',1,true);setStatus(e,'準備送醫');const b=findEnt('bus');if(b)setStatus(b,'');return e.obj.position.clone()}},
+      {at:1110,t:'紅、黃傷患均已後送，遊覽車公司調派接駁車載送輕傷乘客',fx(){driveIn('bus','接駁遊覽車',-55,laneZ());return P(-55,0,laneZ())}}]},
+  train:{name:'火車出軌',desc:'5 節車廂列車出軌，前 3 節滑出軌道，多人受傷、電車線斷落',top:'var(--c-veh)',cam:[58,46,64],tgt:[8,0,6],
+    env(){road(5,26);
+      envGroup.add(box(800,.35,4.8,0x8d8a84,0,.17,0));
+      for(const s of[-1,1])envGroup.add(box(800,.16,.12,0xb7bcc1,0,.43,s*.72));
+      for(let x=-120;x<=120;x+=1.5)envGroup.add(box(.34,.14,2.6,0x5b4630,x,.4,0));
+      envGroup.add(box(800,.8,.12,0x333b44,0,6.1,0));
+      for(let x=-120;x<=120;x+=30){envGroup.add(box(.25,6.4,.25,0x77808a,x,3.2,-3.6));envGroup.add(box(.15,.15,3.6,0x77808a,x,6.2,-1.8))}
+      for(let x=-120;x<=120;x+=16)tree(x,-16-(x%5));for(let x=-110;x<=110;x+=20)tree(x,34)},
+    init:[['trainCar',-52,0,0,'第 5 節車廂'],['trainCar',-30,0,0,'第 4 節車廂'],['trainTilt',-6,1.6,-.12,'第 3 節車廂（出軌傾斜）'],['trainTilt',17,6,-.5,'第 2 節車廂（出軌傾斜）'],['trainOver',33,11,-1,'第 1 節車廂（側翻）'],
+      ['civ',-2,-3.4,.5,'乘客（自行逃出）'],['civ',-8,-4,1,'乘客（自行逃出）'],['civ',-13,-3.6,0,'乘客（自行逃出）'],
+      ['victim',9,-2.6,.4,'乘客 01（倒臥）'],['victim',13.5,14,1.2,'乘客 02（倒臥）'],['victim',22,15,2,'乘客 03（倒臥）'],['victim',2,6.4,.3,'乘客 04（倒臥）']],
+    inj:[
+      {at:0,t:'119 報案：花東線路段列車出軌，5 節車廂前 3 節滑出軌道，約 60 名乘客，多人受傷',fx:()=>P(8,0,6)},
+      {at:90,t:'第一梯次水箱車 2 輛、救助器材車、救護車抵達農路集結',fx:()=>firstWave([['engine','第一梯次 水箱車 1',-20],['engine','第一梯次 水箱車 2',-29],['rescue','救助器材車',-38],['amb','第一梯次 救護車',-47]])},
+      {at:180,t:'第 1 節車廂側翻，車內有乘客受困',fx(){const e=findEnt('trainOver');if(!e)return null;setStatus(e,'多人受困｜車廂側翻');return e.obj.position.clone()}},
+      {at:270,t:'電車線斷落，垂在第 2 節車廂旁，須通報台鐵斷電並接地',fx(){addEntity('note',14,1.6,0,'電車線斷落（高壓）',1,true);addEntity('tape',14,-.2,0,'高壓危險警戒',1,true);return P(14,0,1)}},
+      {at:360,t:'第 2、3 節車廂乘客自行爬出，聚集在路堤，數人受傷',fx(){for(let i=0;i<6;i++)addEntity('civ',-4+Math.random()*10,-5-Math.random()*2.5,Math.random()*6,null,1,true);return P(2,0,-5)}},
+      {at:450,t:'第 2 節車廂底部冒煙',fx(){const w=findEnt('wind');addEntity('smoke',17,6,w?w.obj.rotation.y:0,'車廂底部冒煙',.5,true,.6);return P(17,0,6)}},
+      {at:540,t:'增援人力與救護車抵達集結區',fx:()=>reinforce()},
+      {at:630,t:'台鐵人員抵達，確認斷電並完成接地',fx(){driveIn('car','台鐵人員車輛',-14,laneZ());return P(-14,0,laneZ())}},
+      {at:720,t:'側翻車廂內一名受困乘客意識變差',fx(){const e=findEnt('trainOver');if(!e)return null;setStatus(e,'受困者生命徵象惡化');return e.obj.position.clone()}},
+      {at:810,t:'第 4、5 節車廂乘客完成疏散，聚集在路堤',fx(){for(let i=0;i<6;i++)addEntity('civ',-42+Math.random()*14,-5-Math.random()*3,Math.random()*6,null,1,true);return P(-35,0,-5)}},
+      {at:900,t:'現場救護車全數載送，需調度更多救護車',fx(){driveIn('amb','第三梯次 救護車',-56,laneZ());return P(-56,0,laneZ())}},
+      {at:1020,t:'側翻車廂內受困者陸續救出',fx(){const e=addEntity('victim',27,18,.5,'受困乘客（已救出）',1,true);setStatus(e,'準備送醫');const t=findEnt('trainOver');if(t)setStatus(t,'');return e.obj.position.clone()}},
+      {at:1110,t:'台鐵救援吊車抵達，準備後續復舊',fx(){driveIn('rescue','台鐵救援吊車',-62,laneZ(),900);return P(-62,0,laneZ())}}]},
   blank:{name:'空白場景',desc:'只有道路，自行布置情境',top:'var(--c-ext)',cam:[34,30,38],tgt:[0,0,0],env(){road(10)},init:[],inj:[{t:'現場出現新的狀況'}]}
 };
 /* 成功鎮中華路與成功路轉角：L 形街廓，兩側連棟透天厝；情境沿用透天厝火警。
@@ -1611,7 +1678,7 @@ function pulse(p){const m=flat(new THREE.RingGeometry(.8,1.1,48),0xff2a2a,p.y+.1
 function flyTo(p,offArg){const off=offArg?offArg.clone():camera.position.clone().sub(controls.target);if(off.length()>48)off.setLength(48);
   const t0=controls.target.clone(),c0=camera.position.clone(),t1=p.clone(),c1=p.clone().add(off);
   tween(1400,k=>{const e=ease(k);controls.target.lerpVectors(t0,t1,e);camera.position.lerpVectors(c0,c1,e)})}
-const laneZ=()=>({tanker:4,crash:3}[S.scen]||2.5);
+const laneZ=()=>({tanker:4,crash:3,train:26}[S.scen]||2.5);
 function driveIn(type,name,tx,tz,delay=0,from='w'){const dir=from==='e'?-1:1,lane=dir*laneZ();const e=addEntity(type,tx-120*dir,lane,dir>0?0:Math.PI,name,1,true);const x0=e.obj.position.x,T=6500;push(e,T+delay,{x:tx,from:[x0,lane]});
   tween(T+delay,k=>{const kk=Math.max(0,(k*(T+delay)-delay)/T);e.obj.position.x=x0+(tx-x0)*ease(kk)},()=>{
     if(Math.abs(tz-lane)>.5){tween(1500,k=>{e.obj.position.z=lane+(tz-lane)*ease(k)});push(e,1500,{x:tx,z:tz})}log(`「${name}」抵達`,'sys')});return e}
