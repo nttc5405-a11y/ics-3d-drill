@@ -1856,7 +1856,7 @@ function launch(data,opt={}){
     else{log(opt.online&&!NET.host?'加入場次':'回到場次','sys');if(opt.online&&!NET.host)logEvt('加入場次',sc.name,true)};camera.position.set(...(md?md.cam:sc.cam));controls.target.set(...(md?md.tgt:sc.tgt))}
   renderLog();
   $('#scenName').textContent=`${sc.name}・${NET.on?(NET.host?'教官':NET.me.label):(S.role==='ctrl'?'主控':'學員')}`;
-  $('#injectBtn').style.display=S.role==='ctrl'?'':'none';$('#endDrillBtn').style.display=(!NET.on||NET.host)?'':'none';$('#tipBtn').style.display=S.role==='ctrl'?'':'none';$('#vlBtn').style.display=(!NET.on||NET.host)?'':'none';if(!NET.on)applyViewLock(null,true);$('#modSaveBtn').style.display=(S.role==='ctrl'&&AUTH.token&&AUTH.user&&AUTH.user.key!=='tr'&&(!NET.on||NET.host))?'':'none';if(S.role!=='ctrl')$('#tipPanel').classList.remove('show');
+  $('#injectBtn').style.display=S.role==='ctrl'?'':'none';$('#endDrillBtn').style.display=(!NET.on||NET.host)?'':'none';$('#tipBtn').style.display=S.role==='ctrl'?'':'none';$('#vlBtn').style.display=(!NET.on||NET.host)?'':'none';if(!NET.on)applyViewLock(null,true);$('#modSaveBtn').style.display=(S.role==='ctrl'&&modCan()&&AUTH.user&&AUTH.user.key!=='tr'&&(!NET.on||NET.host))?'':'none';if(S.role!=='ctrl')$('#tipPanel').classList.remove('show');
   if(S.role!=='ctrl'&&S.cat==='env')S.cat='all';
   renderTabs();renderItems();renderSceneList();
   document.body.classList.toggle('net-trainee',!!(NET.on&&!NET.host));applyNight(NET.on&&NET.meta?!!NET.meta.night:false);
@@ -1926,7 +1926,7 @@ function applyView(v){
   document.querySelector('[data-role="ctrl"]').style.display=(ins||u.key==='admin')?'':'none';
   document.querySelector('[data-role="trainee"]').style.display=(!ins||u.key==='admin')?'':'none';
   setRole(ins?'ctrl':'trainee');
-  $('#modBtn').style.display=(AUTH.token&&u.key!=='tr')?'':'none';
+  $('#modBtn').style.display=((AUTH.token&&u.key!=='tr')||(u.acct==='guest'&&u.key==='ins'))?'':'none';
   const lock=u.key!=='admin';
   $('#hName').value=u.name;$('#jName').value=u.name;$('#hName').readOnly=lock;$('#jName').readOnly=lock}
 function enterApp(user,token){
@@ -2026,16 +2026,19 @@ $('#fbSend').onclick=async()=>{const b=$('#fbSend'),r1=$('#fb1').value,r2=$('#fb
     if(r.ok){$('#fbDlg').close();['#fb1','#fb2','#fb3','#fbText','#fbUnit'].forEach(q=>$(q).value='');fbId=null;flash('謝謝您的意見回饋')}else flash(r.err||'送出失敗，內容已保留，請稍後再試')}
   catch(err){console.error(err);flash('連線失敗，內容已保留，請稍後再試')}finally{busy(b,false)}};
 /* 場景模組：存在 Google 試算表，教官按需載入；新增需驗證碼（驗證在試算表端） */
-const modOk=()=>{if(!AUTH.token){flash('單機試用模式無法使用模組');return false}return true};
+// 免登入的「訪客教官」也可用模組（存檔仍需模組驗證碼）；學員與單機試用不行
+const modCan=()=>!!AUTH.token||!!(AUTH.user&&AUTH.user.acct==='guest'&&AUTH.user.key==='ins');
+const modAuth=()=>AUTH.token?{token:AUTH.token}:{token:'',guest:'ins',gunit:AUTH.user.gunit,gname:AUTH.user.gname};
+const modOk=()=>{if(!modCan()){flash('單機試用模式無法使用模組');return false}return true};
 function modData(){const r=n=>Math.round(n*100)/100;return{scen:S.scen,cam:camera.position.toArray().map(r),tgt:controls.target.toArray().map(r),
   ents:[...entities.values()].map(e=>({type:e.type,name:e.name,x:r(e.obj.position.x),y:r(e.obj.position.y),z:r(e.obj.position.z),rot:r(e.obj.rotation.y),scale:e.scale||1,prm:e.prm||null}))}}
 $('#modBtn').onclick=async()=>{if(!modOk())return;const ul=$('#modList');ul.innerHTML='<li style="color:var(--muted)">讀取中…</li>';$('#modDlg').showModal();
-  try{const r=await gas({type:'modlist',token:AUTH.token});
+  try{const r=await gas({type:'modlist',...modAuth()});
     if(!r.ok){ul.innerHTML=`<li style="color:var(--muted)">${esc(r.err||'讀取失敗')}</li>`;return}
     ul.innerHTML=r.items.map(m=>`<li><button type="button" data-n="${esc(m.n)}">${esc(m.n)}<small>${esc(m.d||'（無說明）')}　${esc(m.by)}・${esc(m.at)}</small></button></li>`).join('')||'<li style="color:var(--muted)">目前沒有模組，請先在演練中按「存成模組」建立。</li>'}
   catch(err){console.error(err);ul.innerHTML='<li style="color:var(--muted)">連線失敗，請稍後再試</li>'}};
 $('#modList').addEventListener('click',async ev=>{const b=ev.target.closest('button[data-n]');if(!b)return;b.disabled=true;
-  try{const r=await gas({type:'modget',token:AUTH.token,name:b.dataset.n});if(!r.ok){flash(r.err||'載入失敗');return}
+  try{const r=await gas({type:'modget',...modAuth(),name:b.dataset.n});if(!r.ok){flash(r.err||'載入失敗');return}
     const d=JSON.parse(r.data);if(!SCEN[d.scen]||!Array.isArray(d.ents)){flash('這個模組的場景已不存在');return}
     S.mod={name:b.dataset.n,scen:d.scen,cam:d.cam,tgt:d.tgt,ents:d.ents};S.scen=d.scen;
     document.querySelectorAll('.scard').forEach(c=>c.classList.toggle('on',c.dataset.k===S.scen));
@@ -2048,7 +2051,7 @@ $('#mSend').onclick=async()=>{const b=$('#mSend'),name=$('#mName').value.trim(),
   if(!name){flash('請輸入模組名稱');return}if(!code){flash('請輸入模組驗證碼');return}
   const data=JSON.stringify(modData());if(data.length>45000){flash('場景物件太多，超過可儲存的大小');return}
   busy(b,true);
-  try{const r=await gas({type:'modsave',token:AUTH.token,name,desc:$('#mDesc').value.trim(),code,data});
+  try{const r=await gas({type:'modsave',...modAuth(),name,desc:$('#mDesc').value.trim(),code,data});
     $('#mCode').value='';if(r.ok){$('#modSaveDlg').close();$('#mName').value='';$('#mDesc').value='';flash(`模組「${name}」已儲存`)}else flash(r.err||'儲存失敗，內容已保留')}
   catch(err){console.error(err);flash('連線失敗，內容已保留，請稍後再試')}finally{busy(b,false)}};
 renderTabs();renderItems();renderSceneList();loop();
