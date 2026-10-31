@@ -169,6 +169,7 @@ button{cursor:pointer}
 #mselList li.next .num{color:var(--ink)}
 #mselList li.done{opacity:.5}
 #mselList li.skip .tx{text-decoration:line-through;color:var(--muted)}
+#mselList li.hd{display:block;border-left:0;padding:12px 0 4px 8px;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.04em}
 .chip.done{opacity:.45}
 #banner{position:absolute;left:50%;top:66px;transform:translate(-50%,-8px);opacity:0;pointer-events:none;z-index:15;background:var(--red);color:#fff;border-radius:10px;padding:10px 18px;box-shadow:var(--shadow);max-width:min(560px,90vw);transition:opacity .25s,transform .25s}
 #banner.show{opacity:1;transform:translate(-50%,0)}
@@ -378,7 +379,7 @@ html,body{touch-action:manipulation}
   </section>
 
   <section id="mselPanel" aria-label="演練腳本">
-    <header><h2>演練腳本</h2><span id="mselNext" class="num"></span><button type="button" class="tbtn" id="mselClose">關閉</button></header>
+    <header><h2>演練腳本</h2><span id="mselNext" class="num"></span><button type="button" class="tbtn" id="mselCustom" style="background:var(--red);color:#fff;border-color:var(--red)">自訂注入</button><button type="button" class="tbtn" id="mselClose">關閉</button></header>
     <div class="fxrow" style="padding:8px 12px 0;margin:0"><label><input type="checkbox" id="mselAuto" checked> 依時間自動發布</label><label><input type="checkbox" id="mselCam" checked> 鏡頭跟隨</label>
       <label>倍速 <select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option></select></label></div>
     <ol id="mselList"></ol>
@@ -545,7 +546,7 @@ html,body{touch-action:manipulation}
     <h2 tabindex="-1" autofocus>狀況注入</h2>
     <textarea id="injText" placeholder="輸入要發布給學員的狀況"></textarea>
     <div class="chips" id="injChips"></div>
-    <div class="fxrow"><label for="injFx">場景變化</label><select id="injFx"><option value="none">無</option><option value="preset">依所選預設狀況</option><option value="fireUp">火勢擴大</option><option value="smoke">濃煙擴散</option><option value="victim">新增傷患</option><option value="reinforce">增援車輛抵達</option><option value="wind">風向改變 45°</option></select><label><input type="checkbox" id="injCam" checked> 鏡頭帶到事件位置</label></div>
+    <div class="fxrow"><label for="injFx">場景變化</label><select id="injFx"><option value="none">無</option><option value="fireUp">火勢擴大</option><option value="smoke">濃煙擴散</option><option value="victim">新增傷患</option><option value="reinforce">增援車輛抵達</option><option value="wind">風向改變 45°</option></select><label><input type="checkbox" id="injCam" checked> 鏡頭帶到事件位置</label></div>
     <div class="drow">
       <button type="button" class="tbtn" id="injCancel">取消</button>
       <button type="button" class="tbtn" id="injSend" style="background:var(--red);color:#fff;border-color:var(--red)">發布狀況</button>
@@ -827,7 +828,7 @@ function applyPrm(e){const p=e.prm||{},o=e.obj;
 function setPrm(e,prm){if(!e||!prm)return;e.prm=Object.assign({},e.prm,prm);applyPrm(e)}
 
 /* ---------- 物件目錄（指揮板磁鐵） ---------- */
-const CATS=[['all','全部'],['veh','車輛'],['ppl','人員'],['res','應變'],['act','戰術'],['wat','水域'],['env','環境'],['ext','其他']];
+const CATS=[['fav','常用'],['all','全部'],['veh','車輛'],['ppl','人員'],['res','應變'],['act','戰術'],['wat','水域'],['env','環境'],['ext','其他']];
 const CAT_COLOR={veh:'var(--c-veh)',ppl:'var(--c-ppl)',res:'var(--c-res)',act:'#2a7de1',wat:'#1fa3c7',env:'var(--c-env)',ext:'var(--c-ext)'};
 const CATALOG={
   engine:{cat:'veh',name:'水箱車',build(){const g=truck({len:8});g.add(box(5.4,.15,2,0x9aa0a6,-1.15,3.45,0));return g}},
@@ -1397,7 +1398,7 @@ SCEN.chem={name:'化學工廠火警',desc:'溶劑倉庫起火、鄰近儲槽受�
     {at:1080,t:'主要火勢受控，持續冷卻儲槽，人員與裝備進行除污',fx(){fades('fire',.5);fades('flash',0);fades('smokeBlack',.6);return P(-14,6,-30)}}]};
 
 /* ---------- 狀態 ---------- */
-const S={scen:'house',speed:1,clock:{run:false,base:0,startAt:0,speed:1},msel:[],pendingIdx:null,role:'ctrl',cat:'all',q:'',placing:null,ghost:null,sel:null,labels:true,run:false,elapsed:0,last:0,log:[]};
+const S={scen:'house',fav:[],speed:1,clock:{run:false,base:0,startAt:0,speed:1},msel:[],pendingIdx:null,role:'ctrl',cat:'all',q:'',placing:null,ghost:null,sel:null,labels:true,run:false,elapsed:0,last:0,log:[]};
 const entities=new Map();let nextId=1;const counters={};
 
 /* ---------- 連線（Firebase Realtime Database） ---------- */
@@ -1514,9 +1515,9 @@ function focusOn(e){const off=camera.position.clone().sub(controls.target);contr
 
 /* ---------- 面板 ---------- */
 function canUse(def){return S.role==='ctrl'||def.cat!=='env'}
-function renderTabs(){$('#tabs').innerHTML=CATS.filter(([k])=>S.role==='ctrl'||k!=='env').map(([k,n])=>`<button type="button" class="tab ${S.cat===k?'on':''}" data-cat="${k}">${n}</button>`).join('')}
+function renderTabs(){$('#tabs').innerHTML=CATS.filter(([k])=>k==='fav'?(S.role==='ctrl'&&S.fav.length>0):(S.role==='ctrl'||k!=='env')).map(([k,n])=>`<button type="button" class="tab ${S.cat===k?'on':''}" data-cat="${k}">${n}</button>`).join('')}
 function renderItems(){const q=S.q.trim();
-  $('#items').innerHTML=Object.entries(CATALOG).filter(([k,d])=>canUse(d)&&(S.cat==='all'||d.cat===S.cat)&&(!q||d.name.includes(q))).map(([k,d])=>
+  $('#items').innerHTML=(S.cat==='fav'?S.fav.map(k=>[k,CATALOG[k]]):Object.entries(CATALOG)).filter(([k,d])=>canUse(d)&&(S.cat==='all'||S.cat==='fav'||d.cat===S.cat)&&(!q||d.name.includes(q))).map(([k,d])=>
     `<button type="button" class="item ${S.placing===k?'on':''}" data-type="${k}" style="--cc:${CAT_COLOR[d.cat]}"><b>${d.name}</b><small>${CATS.find(c=>c[0]===d.cat)[1]}</small></button>`).join('')||'<p style="color:var(--muted);padding:8px">找不到符合的物件，換個關鍵字試試。</p>'}
 function renderSceneList(){$('#count').textContent=entities.size;
   $('#sceneList').innerHTML=[...entities.values()].map(e=>`<button type="button" class="srow ${S.sel===e.id?'on':''}" data-id="${e.id}"><i style="--cc:${CAT_COLOR[CATALOG[e.type].cat]}"></i><span>${esc(e.name)}</span><span>${NET.on&&e.owner?(e.owner===CID?'我的':'已指派'):CATS.find(c=>c[0]===CATALOG[e.type].cat)[1]}</span></button>`).join('')||'<p style="color:var(--muted);padding:6px;font-size:13px">從上方點選物件，再點地面放置。</p>'}
@@ -1737,12 +1738,53 @@ const GENERIC={
   reinforce:()=>reinforce(),
   wind(){const w=findEnt('wind');return setWind((w?w.obj.rotation.y:0)+Math.PI/4)}
 };
+/* ---------- 試算表管理的注入與常用物件（分頁「注入」「常用物件」） ----------
+   程式內建的注入保留在 BASE_INJ；試算表有該場景的列就用試算表，沒有就沿用內建。
+   效果欄「內建」＝沿用內建第 N 則的場景變化，其餘效果由下方 shFx 依欄位組出來。 */
+const BASE_INJ={};for(const k in SCEN)BASE_INJ[k]=SCEN[k].inj.slice();
+let SHEET_SCEN=null;try{SHEET_SCEN=JSON.parse(lsGet('ics3d:scen')||'null')}catch(e){}
+const shNum=v=>{if(v===''||v==null)return null;const n=Number(v);return isFinite(n)?n:null};
+const shScen=s=>{s=String(s||'').trim();if(SCEN[s])return s;for(const k in SCEN)if(SCEN[k].name===s)return k;return null};
+const shObj=s=>{s=String(s||'').trim();if(CATALOG[s])return s;for(const k in CATALOG)if(CATALOG[k].name===s)return k;return null};
+function shFx(r){const t=shObj(r.obj),x=shNum(r.x),z=shNum(r.z),k=shNum(r.k),n=Math.max(1,Math.min(20,Math.round(shNum(r.n)||1))),nm=String(r.name||'').trim(),st=String(r.status||'').trim();
+  switch(String(r.fx||'').trim()){
+    case '只發布文字':return null;
+    case '新增物件':if(!t)return undefined;return()=>{const f=focusPoint(),bx=x!=null?x:f.x,bz=z!=null?z:f.z;let p=null;
+      for(let i=0;i<n;i++){const px=bx+(n>1?(i%4-1.5)*2.4:0),pz=bz+(n>1?Math.floor(i/4)*2.4:0);const e=addEntity(t,px,pz,0,nm?(n>1?`${nm} ${i+1}`:nm):null,1,true);if(e&&st)setStatus(e,st);p=P(px,0,pz)}return p};
+    case '車輛抵達':if(!t)return undefined;return()=>{const tx=x!=null?x:-20,tz=z!=null?z:laneZ();driveIn(t,nm||CATALOG[t].name,tx,tz);return P(tx,0,tz)};
+    case '移除物件':if(!t)return undefined;return()=>{const e=findEnt(t,nm||null);if(!e){log(`找不到可移除的「${CATALOG[t].name}」`,'sys');return null}const p=e.obj.position.clone();removeEntity(e.id);return p};
+    case '標示狀態':if(!t)return undefined;return()=>{const e=findEnt(t,nm||null);if(!e){log(`找不到「${CATALOG[t].name}」可標示狀態`,'sys');return null}setStatus(e,st);return e.obj.position.clone()};
+    case '火勢擴大':return GENERIC.fireUp;
+    case '洩漏擴大':return()=>grow('spill',k||1.6);
+    case '濃煙擴大':return()=>grow('smoke',k||1.8);
+    case '風向改變':return()=>{const w=findEnt('wind');return setWind((w?w.obj.rotation.y:0)+(k||45)*Math.PI/180)};
+    case '增援抵達':return reinforce;
+    case '車流回堵':return trafficJam;
+    default:return undefined}}
+function buildInj(k){const base=BASE_INJ[k]||[];const rows=SHEET_SCEN&&SHEET_SCEN.inj?SHEET_SCEN.inj.filter(r=>shScen(r.scen)===k):[];
+  if(!rows.length)return base;
+  const tim=[],bak=[];
+  rows.forEach(r=>{const on=String(r.on==null?'':r.on).trim();if(on==='否'||/^n(o)?$/i.test(on))return;
+    const eff=String(r.fx||'').trim()||(shNum(r.no)!=null?'內建':'只發布文字');let fx,t=String(r.text||'').trim();
+    if(eff==='內建'){const b=base[(shNum(r.no)||0)-1];if(!b){console.warn('注入表第 '+r.row+' 列：找不到內建編號 '+r.no);return}fx=b.fx;if(!t)t=b.t}
+    else{fx=shFx({...r,fx:eff});if(fx===undefined){console.warn('注入表第 '+r.row+' 列：效果或物件無法辨識（'+eff+' / '+r.obj+'）');return}}
+    if(!t)return;
+    const bk=String(r.type||'').trim()==='備用',at=bk?null:shNum(r.at);
+    if(at==null)bak.push({t,fx});else tim.push({at,t,fx})});
+  tim.sort((a,b)=>a.at-b.at);const out=tim.concat(bak);return out.length?out:base}
+function buildFav(k){const rows=SHEET_SCEN&&SHEET_SCEN.fav?SHEET_SCEN.fav.filter(r=>shScen(r.scen)===k):[];
+  return rows.slice().sort((a,b)=>(shNum(a.order)||999)-(shNum(b.order)||999)).map(r=>shObj(r.obj)).filter((o,i,a)=>o&&a.indexOf(o)===i)}
+async function loadSheetScen(){if(!GAS_URL)return;
+  try{const r=await fetch(GAS_URL+'?action=scen');const j=await r.json();if(j&&j.ok&&Array.isArray(j.inj)){SHEET_SCEN=j;lsSet('ics3d:scen',JSON.stringify(j))}}
+  catch(err){console.warn('讀取注入表失敗，沿用內建或上次的快取',err)}}
 $('#clrStatus').onclick=()=>{const e=entities.get(S.sel);if(e&&canEdit(e)){log(`「${e.name}」解除狀態：${e.status}`,'sys');setStatus(e,'')}};
 
 /* ---------- 狀況注入 ---------- */
 const dlg=$('#injDlg');
-$('#injectBtn').onclick=()=>{S.pendingFx=null;S.pendingIdx=null;$('#injChips').innerHTML=SCEN[S.scen].inj.map((o,i)=>`<button type="button" class="chip ${S.msel[i]==='done'?'done':''}" data-i="${i}">${o.at!=null?clockStr(o.at*1000)+'　':''}${o.t}</button>`).join('');$('#injText').value='';$('#injFx').value='none';dlg.showModal();if(matchMedia('(pointer:fine)').matches)$('#injText').focus()};
-$('#injChips').addEventListener('click',ev=>{const b=ev.target.closest('.chip');if(!b)return;const o=SCEN[S.scen].inj[+b.dataset.i];$('#injText').value=o.t;S.pendingFx=o.fx||null;S.pendingIdx=+b.dataset.i;$('#injFx').value=o.fx?'preset':'none'});
+/* 「狀況注入」按鈕＝開啟演練腳本面板（定時與備用的預設注入都在那裡）；面板上的「自訂注入」才是現場自由輸入 */
+function openInjDlg(){S.pendingFx=null;S.pendingIdx=null;$('#injChips').innerHTML='';$('#injText').value='';$('#injFx').value='none';dlg.showModal();if(matchMedia('(pointer:fine)').matches)$('#injText').focus()}
+$('#injectBtn').onclick=()=>{if(!$('#mselPanel').classList.contains('show'))openPanel('#mselPanel')};
+$('#mselCustom').onclick=openInjDlg;
 $('#injCancel').onclick=()=>dlg.close();
 const resetScroll=()=>{if(window.scrollY||document.documentElement.scrollTop||document.body.scrollTop){window.scrollTo(0,0);document.documentElement.scrollTop=0;document.body.scrollTop=0}};
 dlg.addEventListener('close',()=>setTimeout(resetScroll,60));
@@ -1761,8 +1803,8 @@ function doInject(text,fx,cam){log(`狀況注入：${text}`,'inject');const p=fx
   showInject(text,p,cam)}
 function showInject(text,p,cam){showBanner(`狀況注入　${clockStr()}`,text,9000);if(p){pulse(p);if(cam)flyTo(p)}}
 function fireMsel(i){const o=SCEN[S.scen].inj[i];if(!o||S.msel[i]!=='wait')return;S.msel[i]='done';doInject(o.t,o.fx,(NET.on&&!NET.host)||$('#mselCam').checked);renderMsel()}
-function renderMsel(){const inj=SCEN[S.scen].inj,nx=S.msel.indexOf('wait');if(NET.on&&NET.host)NET.ref.child('msel').set(S.msel);
-  $('#mselList').innerHTML=inj.map((o,i)=>{const st=S.msel[i];return `<li class="${st}${i===nx?' next':''}"><span class="num">${o.at!=null?clockStr(o.at*1000):'—'}</span><span class="tx">${esc(o.t)}</span><span class="act">${st==='wait'?`<button type="button" class="tbtn" data-a="fire" data-i="${i}">立即發布</button><button type="button" class="tbtn" data-a="skip" data-i="${i}">略過</button>`:st==='skip'?`<span>已略過</span><button type="button" class="tbtn" data-a="undo" data-i="${i}">恢復</button>`:'已發布'}</span></li>`}).join('')}
+function renderMsel(){const inj=SCEN[S.scen].inj,nx=inj.findIndex((o,i)=>S.msel[i]==='wait'&&o.at!=null);let sec=null;if(NET.on&&NET.host)NET.ref.child('msel').set(S.msel);
+  $('#mselList').innerHTML=inj.map((o,i)=>{const st=S.msel[i],s=o.at!=null?'定時':'備用',hd=s!==sec?(sec=s,`<li class="hd">${s==='定時'?'定時狀況（依演練時間自動發布，也可提前發布）':'備用狀況（學員處置不當時，由教官視情況發布）'}</li>`):'';return hd+`<li class="${st}${i===nx?' next':''}"><span class="num">${o.at!=null?clockStr(o.at*1000):'—'}</span><span class="tx">${esc(o.t)}</span><span class="act">${st==='wait'?`<button type="button" class="tbtn" data-a="fire" data-i="${i}">立即發布</button><button type="button" class="tbtn" data-a="skip" data-i="${i}">略過</button>`:st==='skip'?`<span>已略過</span><button type="button" class="tbtn" data-a="undo" data-i="${i}">恢復</button>`:'已發布'}</span></li>`}).join('')}
 const mselNextEl=$('#mselNext');
 function autoMsel(){const inj=SCEN[S.scen].inj;let nx=-1;for(let i=0;i<inj.length;i++){if(S.msel[i]==='wait'&&inj[i].at!=null){nx=i;break}}
   if(nx>=0&&S.run&&((NET.on&&!NET.host)||$('#mselAuto').checked)&&S.elapsed>=inj[nx].at*1000)fireMsel(nx);
@@ -1845,7 +1887,7 @@ function launch(data,opt={}){
   cancelPlacing();select(null);applying=true;try{[...entities.keys()].forEach(id=>removeEntity(id,true))}finally{applying=false}for(const k in counters)delete counters[k];
   envGroup.children.slice().forEach(o=>{envGroup.remove(o)});
   if(data){S.scen=data.scen;S.role=data.role||S.role}
-  S.bld=null;S.view=null;const sc=SCEN[S.scen];sc.env();$('#floorNav').classList.toggle('show',!!S.bld);document.querySelectorAll('#floorNav button').forEach(x=>x.classList.toggle('on',x.dataset.f==='ext'));
+  S.bld=null;S.view=null;const sc=SCEN[S.scen];sc.inj=buildInj(S.scen);S.fav=buildFav(S.scen);sc.env();$('#floorNav').classList.toggle('show',!!S.bld);document.querySelectorAll('#floorNav button').forEach(x=>x.classList.toggle('on',x.dataset.f==='ext'));
   S.clock={run:false,base:data?data.elapsed||0:0,startAt:0,speed:(data&&data.speed)||1};S.run=false;S.elapsed=S.clock.base;S.log=(!opt.online&&data)?data.log||[]:[];
   const ms0=opt.online?S._msel:(data&&data.msel);S._msel=null;S.msel=(ms0&&ms0.length===sc.inj.length)?ms0:sc.inj.map(()=>'wait');S.speed=(clockObj().speed)||1;$('#speed').value=String(S.speed);renderMsel();
   $('#mselBtn').style.display=(!NET.on||NET.host)?'':'none';$('#mselPanel').classList.remove('show');
@@ -1857,7 +1899,8 @@ function launch(data,opt={}){
   renderLog();
   $('#scenName').textContent=`${sc.name}・${NET.on?(NET.host?'教官':NET.me.label):(S.role==='ctrl'?'主控':'學員')}`;
   $('#injectBtn').style.display=S.role==='ctrl'?'':'none';$('#endDrillBtn').style.display=(!NET.on||NET.host)?'':'none';$('#tipBtn').style.display=S.role==='ctrl'?'':'none';$('#vlBtn').style.display=(!NET.on||NET.host)?'':'none';if(!NET.on)applyViewLock(null,true);$('#modSaveBtn').style.display=(S.role==='ctrl'&&modCan()&&AUTH.user&&AUTH.user.key!=='tr'&&(!NET.on||NET.host))?'':'none';if(S.role!=='ctrl')$('#tipPanel').classList.remove('show');
-  if(S.role!=='ctrl'&&S.cat==='env')S.cat='all';
+  if(S.role!=='ctrl'&&(S.cat==='env'||S.cat==='fav'))S.cat='all';
+  if(S.role==='ctrl'&&S.fav.length&&!data)S.cat='fav';else if(!S.fav.length&&S.cat==='fav')S.cat='all';
   renderTabs();renderItems();renderSceneList();
   document.body.classList.toggle('net-trainee',!!(NET.on&&!NET.host));applyNight(NET.on&&NET.meta?!!NET.meta.night:false);
   $('#start').classList.add('hide');controls.update()}
@@ -1963,7 +2006,7 @@ $('#apSend').onclick=async()=>{const b=$('#apSend'),msg=$('#apMsg'),v=q=>$(q).va
     else msg.textContent=r.err||'送出失敗，請稍後再試'}
   catch(err){console.error(err);msg.textContent='連線失敗，內容已保留，請稍後再試'}finally{busy(b,false)}};
 (async()=>{const tok=ssGet('ics3d:tok');if(GAS_URL&&tok){try{const r=await gas({type:'verify',token:tok});if(r.ok)enterApp({acct:r.acct,name:r.name,role:r.role},tok);else ssDel('ics3d:tok')}catch(err){console.error(err)}}})();
-loadMarquee();
+loadMarquee();loadSheetScen();
 /* 使用者選單 */
 $('#userBtn').onclick=()=>{const u=AUTH.user;$('#uTitle').textContent=`${u.name}（${u.role}）`;
   $('#uInfo').textContent=u.key==='admin'?'管理員可在教官與學員視角之間切換。切換時會回到首頁。':'';
