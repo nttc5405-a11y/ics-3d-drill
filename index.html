@@ -322,8 +322,7 @@ html,body{touch-action:manipulation}
     <div class="spacer"></div>
     <button type="button" class="tbtn" id="palBtn">物件</button>
     <div id="clock"><span id="clockTime" class="num">00:00</span><button type="button" id="clockBtn" aria-label="開始計時">▶</button></div>
-    <button type="button" class="tbtn" id="injectBtn">狀況注入</button>
-    <button type="button" class="tbtn" id="mselBtn">腳本</button>
+    <button type="button" class="tbtn" id="injectBtn">腳本與注入</button>
     <button type="button" class="tbtn" id="logBtn">紀錄</button>
     <button type="button" class="tbtn danger" id="endDrillBtn" style="display:none">演練結束</button>
     <button type="button" class="tbtn" id="nightBtn" title="切換白天／夜間（連線時由教官切換）">白天</button>
@@ -592,6 +591,24 @@ html,body{touch-action:manipulation}
       </div>
       <p class="note" id="netNote"></p>
       <div class="fbrow"><button type="button" class="tbtn fbhi" id="fbStart">意見回饋：告訴我們您的想法</button></div>
+      <details class="guide"><summary>更新日誌</summary>
+        <h3>2026-10-31</h3>
+        <ul>
+          <li><b>新增情境「大規模地震：多處建物倒塌」</b>：日間地震，大樓、國小、透天厝三處倒塌，搭配搜救組、重機具、瓦礫、道路中斷與餘震畫面震動，練習搜救優先順序與人力分配。</li>
+          <li>「腳本」與「狀況注入」合併成「腳本與注入」：定時狀況依演練時間發布，備用狀況由教官視情況手動發布，也可臨時自訂注入。</li>
+          <li>注入內容與常用物件改由 Google 試算表管理，教官可自行調整時間、文字與備用狀況；物件欄新增「常用」分頁。</li>
+        </ul>
+        <h3>2026-10-29</h3>
+        <ul>
+          <li>免登入的教官也能「存成模組」與「從模組載入」。</li>
+        </ul>
+        <h3>2026-10-28</h3>
+        <ul>
+          <li>免登入模式的首頁，直接填單位與姓名，再選教官或學員進入。</li>
+          <li>修正首頁偶爾無法捲到最上方，以及登入畫面短暫閃現的問題。</li>
+          <li>試算表新增「場次管理」：可查看、清除連線場次，並可設定每日自動清除。</li>
+        </ul>
+      </details>
       <details class="guide"><summary>操作說明與參數設定</summary>
         <h3>基本操作</h3>
         <ul>
@@ -603,7 +620,7 @@ html,body{touch-action:manipulation}
         </ul>
         <h3>演練流程與講評</h3>
         <ul>
-          <li><b>腳本與倍速</b>：右上角「腳本」可看整份演練腳本，並調時間倍速（1 到 8 倍）、勾選是否「依時間自動發布」與「鏡頭跟隨」，也能「立即發布」或略過某一則。單機練習的人都可以使用；連線時只有教官能調。</li>
+          <li><b>腳本與倍速</b>：右上角「腳本與注入」可看整份演練腳本（定時與備用狀況），並調時間倍速（1 到 8 倍）、勾選是否「依時間自動發布」與「鏡頭跟隨」，也能「立即發布」或略過某一則，或按「自訂注入」臨時輸入狀況。單機練習的人都可以使用；連線時只有教官能調。</li>
           <li><b>演練結束</b>：單機練習或教官按右上角「演練結束」，畫面中間會跳出 <b>HOTWASH 講評</b>，列出出勤回報、到場 Size up、ICP 建立、安全管制、設立目標並編組分派執行等檢討項目。教官（或單機的你）可逐項勾選，連線時學員看得到同步結果；講完按「關閉講評」，也可「複製紀錄」做 AAR。</li>
           <li><b>學員視角鎖定（連線教官）</b>：教官按上方「學員視角」，可讓所有學員的鏡頭貼近地面、不能俯視。預設高度 1.5 到 3 公尺、最遠看 40 公尺，數字可自行微調；再按一次即可更新或解除。鎖定時學員仍可用 WASD 走動，上下樓層也照常，教官自己不受影響。單機練習也有「視角鎖定」按鈕，鎖的是自己的鏡頭。</li>
           <li><b>放置戰術後指派人員</b>：從「戰術」放置物件後，會跳出視窗讓你勾選要操作的消防員，確定後他們會直接移到戰術旁並標上任務編組，不必再一個個搬人。場景裡要先有消防員。</li>
@@ -1397,6 +1414,85 @@ SCEN.chem={name:'化學工廠火警',desc:'溶劑倉庫起火、鄰近儲槽受�
     {at:990,t:'環保局人員抵達，要求攔阻消防廢水，避免流入排水溝',fx(){driveIn('car','環保局車輛',-24,laneZ());return P(-24,0,laneZ())}},
     {at:1080,t:'主要火勢受控，持續冷卻儲槽，人員與裝備進行除污',fx(){fades('fire',.5);fades('flash',0);fades('smokeBlack',.6);return P(-14,6,-30)}}]};
 
+/* ---------- 大規模地震：倒塌建物與搜救物件 ---------- */
+function rubbleMound(w,d,h,n=24){const g=new THREE.Group();const cols=[0x8a8c8e,0x9b9893,0x77797b,0xa59c8e,0x6f6a62];
+  for(let i=0;i<n;i++){const sx=.8+Math.random()*2.6,sy=.4+Math.random()*1.3,sz=.8+Math.random()*2.6;
+    const x=(Math.random()-.5)*w,z=(Math.random()-.5)*d,k=1-Math.min(1,Math.hypot(x/(w/2),z/(d/2)));
+    const b=box(sx,sy,sz,cols[i%cols.length],x,sy/2+k*h*(.35+Math.random()*.55),z);b.rotation.set((Math.random()-.5)*.8,Math.random()*3,(Math.random()-.5)*.8);g.add(b)}
+  for(let i=0;i<7;i++){const c=cyl(.03,.03,2+Math.random()*2.5,0x5a4a3c,(Math.random()-.5)*w*.8,h*.6+Math.random()*h*.3,(Math.random()-.5)*d*.8,6);c.rotation.set(Math.random()*1.2,Math.random()*3,Math.random()*1.2);g.add(c)}
+  return g}
+function quakeTower(){const g=new THREE.Group();
+  g.add(rubbleMound(19,16,4.6,52));
+  const up=new THREE.Group();up.add(house(13,19,11,'#b8bfc4'));up.position.set(-1,2.2,0);up.rotation.z=-.3;g.add(up);
+  const r2=rubbleMound(8,13,2.4,22);r2.position.set(9.5,0,0);g.add(r2);return g}
+function quakeSchool(){const g=new THREE.Group();
+  const a=house(22,11,10,'#d6cdb8');a.position.x=-9;g.add(a);
+  const r=rubbleMound(15,12,4.4,42);r.position.x=9;g.add(r);
+  const slab=box(10,.5,9,0xbfc3c6,9,3.8,0);slab.rotation.z=.32;g.add(slab);
+  for(const z of[-4,0,4]){const c=box(.7,5,.7,0xaaa9a4,3,2.4,z);c.rotation.z=z?.12:-.1;g.add(c)}
+  const sg=new THREE.Mesh(new THREE.PlaneGeometry(6,1.4),new THREE.MeshBasicMaterial({map:textTex('○○國小','#1d4f9c','#ffffff',256,60,40)}));sg.position.set(-9,9.2,5.06);g.add(sg);
+  const f=flat(new THREE.PlaneGeometry(34,22),0x9b5a3c,.03,.85);f.position.x=2;f.position.z=19;g.add(f);return g}
+function quakeHouse(){const g=new THREE.Group();
+  g.add(rubbleMound(11,14,3.2,34));
+  const up=new THREE.Group();up.add(house(6.6,9.5,11,'#c9b79c'));up.position.set(0,1.7,.5);up.rotation.set(.05,.08,-.14);g.add(up);return g}
+Object.assign(CATALOG,{
+  sarTeam:{cat:'ppl',name:'搜救組',build(){const g=new THREE.Group();
+    [[-1.1,-.6],[0,-.8],[1.1,-.6],[-.55,.5],[.55,.5]].forEach(([x,z],i)=>{const p=person(0xe8761a,0xf5f5f5,{vest:0xd6e548,legs:0x2b2f3a});p.position.set(x,0,z);p.rotation.y=i*.7;g.add(p)});
+    g.add(box(.9,.5,.5,0xe0a800,1.9,.25,.2));g.add(cyl(.04,.04,3.4,0xb0b4b8,-1.9,1.7,0));
+    const f=new THREE.Mesh(new THREE.PlaneGeometry(1.5,.9),new THREE.MeshBasicMaterial({color:0xe8761a,side:THREE.DoubleSide}));f.position.set(-1.15,3,0);g.add(f);return g},h:3.5},
+  excavator:{cat:'veh',name:'重機具（挖土機）',build(){const g=new THREE.Group();
+    for(const z of[-1.1,1.1])g.add(box(4.2,.7,.8,0x2b2f33,0,.35,z));
+    g.add(box(3,.9,2.6,0xe0a800,0,1.15,0));g.add(box(1.5,1.6,1.9,0xe0a800,-.7,2.2,0));g.add(box(.06,.9,1.5,C.glass,.06,2.5,0));
+    const b1=box(4,.45,.5,0xe0a800,2.5,2.6,0);b1.rotation.z=.5;g.add(b1);const b2=box(3,.35,.4,0xe0a800,4.6,3.2,0);b2.rotation.z=-.7;g.add(b2);g.add(box(.9,.7,.8,0x555555,6,2.4,0));return g},h:4.2},
+  rubble:{cat:'env',name:'瓦礫堆',build:()=>rubbleMound(8,8,2.2,20)},
+  roadBlock:{cat:'env',name:'道路中斷（坍方）',build(){const g=new THREE.Group();g.add(rubbleMound(12,5,1.8,22));g.add(flat(new THREE.PlaneGeometry(14,6.5),0x4a4036,.02,.8));return g}},
+  bldgQuakeTower:{cat:'ext',name:'倒塌大樓（傾斜）',build:quakeTower,h:12},
+  bldgQuakeSchool:{cat:'ext',name:'受損校舍（局部垮落）',build:quakeSchool,h:10},
+  bldgQuakeHouse:{cat:'ext',name:'倒塌透天厝（壓垮）',build:quakeHouse,h:8}
+});
+/* 災區地圖：東西向主幹道（z=0）與北側道路（z=-80），中央南北向道路（x=0）。
+   A 大樓（-75,-38）、B 國小（80,-40）、C 透天厝（20,-95）；南側空地為指揮所與集結區。 */
+function quakeEnv(){
+  road(12,0);road(10,-80);
+  const ns=flat(new THREE.PlaneGeometry(10,230),0x3a3e44,.015,1);ns.position.set(0,.015,-55);envGroup.add(ns);
+  row(-14,0,1,5,10);row(-14,0,11,12,10);row(-14,0,-12,-1,10);
+  row(-95,0,1,12,10,2);row(-95,0,-12,-1,10);
+  for(let x=-130;x<=130;x+=22)tree(x,44+((x/22)%3+3)%3*4)}
+const QK=()=>findEnt('bldgQuakeTower'),QS=()=>findEnt('bldgQuakeSchool'),QH=()=>findEnt('bldgQuakeHouse');
+const qkSt=(f,t)=>{const e=f();if(!e)return null;setStatus(e,t);return e.obj.position.clone()};
+SCEN.quake={name:'大規模地震：多處建物倒塌',desc:'日間規模 6.8 地震，大樓、國小、透天厝三處倒塌，搜救隊有限：練習搜救優先順序與人力分配（假設情境）',top:'var(--c-ppl)',cam:[120,100,60],tgt:[0,0,-45],
+  env:quakeEnv,
+  fav:['sarTeam','excavator','amb','engine','rescue','victim','civ','rubble','roadBlock','search','breach','triage','staging','cp','note','cone','tape'],
+  init:[['cp',0,28],['staging',-26,30],['triage',26,28],
+    ['bldgQuakeTower',-75,-38,0,'A 大樓（9 層）'],['bldgQuakeSchool',80,-40,0,'B ○○國小 校舍（假設）'],['bldgQuakeHouse',20,-95,0,'C 透天厝（4 層）'],
+    ['sarTeam',-28,28,0,'搜救一組（6 人・破壞切割）'],['sarTeam',-24,28,0,'搜救二組（6 人・偵搜設備）'],['sarTeam',-28,32,0,'搜救三組（5 人・搜救犬）'],['sarTeam',-24,32,0,'搜救四組（6 人・破壞切割）'],
+    ['excavator',-44,32,0,'縣府重機具（挖土機）1 台'],['amb',8,40,0,'救護車 1'],['amb',16,40,0,'救護車 2'],['engine',24,40,0,'水箱車 1'],['rescue',32,40,0,'救助器材車']],
+  inj:[
+    {at:0,t:'地震發生（規模 6.8，日間）：縣內陸續接獲通報，三處建物倒塌——A 大樓傾斜、B 國小校舍局部垮落、C 透天厝整棟壓垮',fx(){quake(3200,.9);return P(0,0,-50)}},
+    {at:60,t:'通訊壅塞，通報人數各說各話：A 大樓約 20 人、B 國小「教室有學生」但人數不明、C 透天厝 1 戶 4 人'},
+    {at:120,t:'縣內搜救隊 4 組（假設編組）與重機具 1 台已在集結區待命；外縣市支援預計 3 小時後才能到',fx:()=>P(-26,0,30)},
+    {at:180,t:'A 大樓：搜救犬與偵搜設備回報 3 樓、5 樓有生命跡象，建築物仍在緩慢傾斜',fx(){addEntity('victim',-80,-41,0,'A 大樓 3F 生命跡象',1,true,4);addEntity('victim',-71,-36,0,'A 大樓 5F 生命跡象',1,true,8);
+      const a=findEnt('victim','5F'),b=findEnt('victim','3F');if(a)setStatus(a,'疑似有人');if(b)setStatus(b,'確認有人');return qkSt(QK,'持續傾斜｜3F、5F 有生命跡象')}},
+    {at:240,t:'B 國小：校方回報全校約 300 人，已疏散操場約 280 人，約 20 人未清點，垮落側教室疑有學生',fx(){for(let i=0;i<6;i++)addEntity('civ',66+i*5,-20-(i%2)*3,Math.random()*6,'學生（操場集合）',1,true);return qkSt(QS,'垮落側｜約 20 人未清點')}},
+    {at:300,t:'C 透天厝：鄰居敲牆聽到回應聲，屋內有 4 人，位置疑似一樓後側',fx(){const e=addEntity('victim',20,-98,0,'C 一樓 回應聲',1,true,.3);setStatus(e,'確認有人（回應聲）');qkSt(QH,'屋內 4 人');return e.obj.position.clone()}},
+    {at:360,t:'規模 5.4 餘震：A 大樓傾斜加劇，周邊人員需緊急撤離',fx(){quake(2800,.8);return qkSt(QK,'傾斜加劇｜外圍撤離')}},
+    {at:420,t:'往 C 透天厝的道路遭坍方阻斷，車輛無法通行，需開路或繞行',fx(){addEntity('roadBlock',0,-48,0,'道路中斷（往 C 方向）',1,true);return P(0,0,-48)}},
+    {at:480,t:'B 國小旁天然氣管線破裂，現場聞到瓦斯味',fx(){const w=findEnt('wind');addEntity('smokeWhite',62,-36,w?w.obj.rotation.y:0,'瓦斯外洩（管線破裂）',.9,true,.5);return P(62,0,-36)}},
+    {at:540,t:'國軍重機具預計 90 分鐘後抵達；外縣市搜救隊約 3 小時後先頭抵達'},
+    {at:600,t:'家屬與媒體聚集在 C 住宅前，要求加速搜救並要求進入現場',fx(){for(let i=0;i<5;i++)addEntity('civ',10+i*2,-84-(i%2)*1.5,Math.random()*6,'家屬',1,true);return P(14,0,-85)}},
+    {at:690,t:'第二次餘震：B 國小校舍另一側出現新裂縫，原本判定安全的一側也不能進入',fx(){quake(2600,.7);return qkSt(QS,'新裂縫｜另一側不可進入')}},
+    {at:780,t:'結構技師抵達 A 大樓：建議上半部禁止進入，只能由下方側面開口作業',fx:()=>qkSt(QK,'結構技師：上半部禁入')},
+    {at:900,t:'名冊核對：A 大樓實際受困約 12 人（原通報 20 人）；B 國小尚有 6 人未尋獲',fx(){qkSt(QS,'6 人未尋獲');return qkSt(QK,'實際約 12 人受困')}},
+    {at:1020,t:'C 透天厝：1 人自瓦礫救出，意識清楚，屋內尚有 3 人',fx(){const o=findEnt('victim','回應聲');if(o)removeEntity(o.id,true);const e=addEntity('victim',24,-88,0,'C 救出傷患',1,true);setStatus(e,'意識清楚／準備送醫');return e.obj.position.clone()}},
+    {at:1110,t:'外縣市搜救隊先頭車隊抵達集結區',fx(){driveIn('rescue','外縣市搜救隊 先頭車隊',-34,24);return P(-34,0,24)}},
+    {t:'【搜救人員遇險】A 大樓下方作業時上方結構位移，兩名隊員被迫撤出',fx(){quake(2400,.6);return qkSt(QK,'結構位移｜隊員撤出')}},
+    {t:'【家長衝破封鎖線】數名家長進入 B 國小垮落側尋找孩子',fx(){for(let i=0;i<4;i++){const e=addEntity('civ',66+i*2,-40+i,Math.random()*6,'家長（擅闖）',1,true);setStatus(e,'擅闖危險區')}return P(70,0,-38)}},
+    {t:'【回應聲消失】搜救力量分散後，C 透天厝再也聽不到回應聲',fx(){const e=findEnt('victim','回應聲');if(!e)return null;setStatus(e,'回應聲消失');return e.obj.position.clone()}},
+    {t:'【瓦斯擴大】B 國小旁瓦斯外洩擴大，下風處民眾出現不適',fx:()=>grow('smokeWhite',1.8)||P(62,0,-36)},
+    {t:'【資訊不一致】另一名通報人稱 B 國小地下室還有人，與校方名冊不符',fx(){addEntity('note',72,-34,0,'地下室？（待查證）',1,true);return P(72,0,-34)}},
+    {t:'【重機具等待評估】重機具抵達 A 大樓，但操作員表示現場振動大，需結構技師同意才能開挖',fx(){const e=findEnt('excavator');if(!e)return null;setStatus(e,'等待結構評估');return e.obj.position.clone()}},
+    {t:'【媒體直播】媒體直播搜救進度，家屬情緒失控，要求優先搜救自己的親人',fx(){driveIn('car','媒體 SNG 車',-12,24);return P(-12,0,24)}}]};
+
 /* ---------- 狀態 ---------- */
 const S={scen:'house',fav:[],speed:1,clock:{run:false,base:0,startAt:0,speed:1},msel:[],pendingIdx:null,role:'ctrl',cat:'all',q:'',placing:null,ghost:null,sel:null,labels:true,run:false,elapsed:0,last:0,log:[]};
 const entities=new Map();let nextId=1;const counters={};
@@ -1746,6 +1842,10 @@ let SHEET_SCEN=null;try{SHEET_SCEN=JSON.parse(lsGet('ics3d:scen')||'null')}catch
 const shNum=v=>{if(v===''||v==null)return null;const n=Number(v);return isFinite(n)?n:null};
 const shScen=s=>{s=String(s||'').trim();if(SCEN[s])return s;for(const k in SCEN)if(SCEN[k].name===s)return k;return null};
 const shObj=s=>{s=String(s||'').trim();if(CATALOG[s])return s;for(const k in CATALOG)if(CATALOG[k].name===s)return k;return null};
+/* 餘震：畫面震動（教官發布注入時，學員端也會跟著震動） */
+let shakeFlag=false;
+function quake(ms=2600,amp=.8){shakeFlag=true;let last=new THREE.Vector3();
+  tween(ms,k=>{const a=amp*(1-k)*(1-k)*2;const j=new THREE.Vector3((Math.random()-.5)*a,(Math.random()-.5)*a*.7,(Math.random()-.5)*a);camera.position.sub(last).add(j);last=j},()=>{camera.position.sub(last)})}
 function shFx(r){const t=shObj(r.obj),x=shNum(r.x),z=shNum(r.z),k=shNum(r.k),n=Math.max(1,Math.min(20,Math.round(shNum(r.n)||1))),nm=String(r.name||'').trim(),st=String(r.status||'').trim();
   switch(String(r.fx||'').trim()){
     case '只發布文字':return null;
@@ -1758,6 +1858,7 @@ function shFx(r){const t=shObj(r.obj),x=shNum(r.x),z=shNum(r.z),k=shNum(r.k),n=M
     case '洩漏擴大':return()=>grow('spill',k||1.6);
     case '濃煙擴大':return()=>grow('smoke',k||1.8);
     case '風向改變':return()=>{const w=findEnt('wind');return setWind((w?w.obj.rotation.y:0)+(k||45)*Math.PI/180)};
+    case '餘震':return()=>{quake(3000,.9);return null};
     case '增援抵達':return reinforce;
     case '車流回堵':return trafficJam;
     default:return undefined}}
@@ -1773,6 +1874,7 @@ function buildInj(k){const base=BASE_INJ[k]||[];const rows=SHEET_SCEN&&SHEET_SCE
     if(at==null)bak.push({t,fx});else tim.push({at,t,fx})});
   tim.sort((a,b)=>a.at-b.at);const out=tim.concat(bak);return out.length?out:base}
 function buildFav(k){const rows=SHEET_SCEN&&SHEET_SCEN.fav?SHEET_SCEN.fav.filter(r=>shScen(r.scen)===k):[];
+  if(!rows.length)return((SCEN[k]&&SCEN[k].fav)||[]).filter(o=>CATALOG[o]);
   return rows.slice().sort((a,b)=>(shNum(a.order)||999)-(shNum(b.order)||999)).map(r=>shObj(r.obj)).filter((o,i,a)=>o&&a.indexOf(o)===i)}
 async function loadSheetScen(){if(!GAS_URL)return;
   try{const r=await fetch(GAS_URL+'?action=scen');const j=await r.json();if(j&&j.ok&&Array.isArray(j.inj)){SHEET_SCEN=j;lsSet('ics3d:scen',JSON.stringify(j))}}
@@ -1783,7 +1885,7 @@ $('#clrStatus').onclick=()=>{const e=entities.get(S.sel);if(e&&canEdit(e)){log(`
 const dlg=$('#injDlg');
 /* 「狀況注入」按鈕＝開啟演練腳本面板（定時與備用的預設注入都在那裡）；面板上的「自訂注入」才是現場自由輸入 */
 function openInjDlg(){S.pendingFx=null;S.pendingIdx=null;$('#injChips').innerHTML='';$('#injText').value='';$('#injFx').value='none';dlg.showModal();if(matchMedia('(pointer:fine)').matches)$('#injText').focus()}
-$('#injectBtn').onclick=()=>{if(!$('#mselPanel').classList.contains('show'))openPanel('#mselPanel')};
+$('#injectBtn').onclick=()=>openPanel('#mselPanel');
 $('#mselCustom').onclick=openInjDlg;
 $('#injCancel').onclick=()=>dlg.close();
 const resetScroll=()=>{if(window.scrollY||document.documentElement.scrollTop||document.body.scrollTop){window.scrollTo(0,0);document.documentElement.scrollTop=0;document.body.scrollTop=0}};
@@ -1798,8 +1900,8 @@ if(window.visualViewport){const vv=window.visualViewport,app=document.getElement
 $('#injSend').onclick=()=>{const t=$('#injText').value.trim();if(!t){$('#injText').focus();return}dlg.close();const mode=$('#injFx').value;const fx=mode==='preset'?S.pendingFx:GENERIC[mode];
   if(mode==='preset'&&S.pendingIdx!=null&&$('#injText').value.trim()){S.msel[S.pendingIdx]='done';renderMsel()}
   doInject(t,fx,$('#injCam').checked)};
-function doInject(text,fx,cam){log(`狀況注入：${text}`,'inject');const p=fx?fx():null;
-  if(NET.on)NET.ref.child('injects').push({text,p:p?[p.x,p.y,p.z]:null,by:CID,ts:firebase.database.ServerValue.TIMESTAMP});
+function doInject(text,fx,cam){log(`狀況注入：${text}`,'inject');shakeFlag=false;const p=fx?fx():null;const sk=shakeFlag;shakeFlag=false;
+  if(NET.on)NET.ref.child('injects').push({text,p:p?[p.x,p.y,p.z]:null,shake:sk?1:0,by:CID,ts:firebase.database.ServerValue.TIMESTAMP});
   showInject(text,p,cam)}
 function showInject(text,p,cam){showBanner(`狀況注入　${clockStr()}`,text,9000);if(p){pulse(p);if(cam)flyTo(p)}}
 function fireMsel(i){const o=SCEN[S.scen].inj[i];if(!o||S.msel[i]!=='wait')return;S.msel[i]='done';doInject(o.t,o.fx,(NET.on&&!NET.host)||$('#mselCam').checked);renderMsel()}
@@ -1813,7 +1915,6 @@ $('#mselList').addEventListener('click',ev=>{const b=ev.target.closest('button')
   if(b.dataset.a==='fire')fireMsel(i);else if(b.dataset.a==='skip'){S.msel[i]='skip';log(`略過腳本：${o.t}`,'sys');renderMsel()}else{S.msel[i]='wait';renderMsel()}});
 $('#speed').addEventListener('change',ev=>{setClock({speed:+ev.target.value});log(`時間倍速 ${S.speed}×`,'sys')});
 function openPanel(id){['#logPanel','#mselPanel','#sessPanel','#tipPanel'].forEach(q=>{if(q!==id)$(q).classList.remove('show')});$(id).classList.toggle('show')}
-$('#mselBtn').onclick=()=>openPanel('#mselPanel');
 $('#mselClose').onclick=()=>$('#mselPanel').classList.remove('show');
 let bTimer;function showBanner(sm,txt,ms){const b=$('#banner');b.querySelector('small').textContent=sm;b.querySelector('strong').textContent=txt;b.classList.add('show');clearTimeout(bTimer);bTimer=setTimeout(()=>b.classList.remove('show'),ms)}
 function flash(t){showBanner('系統',t,2600)}
@@ -1851,7 +1952,7 @@ function attach(){const r=NET.ref;
   r.child('ents').on('child_removed',s=>{applying=true;try{removeEntity(s.key,true)}finally{applying=false}});
   r.child('log').on('child_added',s=>{S.log.push(s.val());renderLog()});
   NET.injQ=r.child('injects').orderByChild('ts').startAt(serverNow()-1000);
-  NET.injQ.on('child_added',s=>{const v=s.val();if(!v||v.by===CID)return;showInject(v.text,v.p?P(v.p[0],v.p[1],v.p[2]):null,$('#followCam').checked)});
+  NET.injQ.on('child_added',s=>{const v=s.val();if(!v||v.by===CID)return;if(v.shake)quake(2600,.6);showInject(v.text,v.p?P(v.p[0],v.p[1],v.p[2]):null,$('#followCam').checked)});
   r.child('meta').on('value',s=>{if(!s.exists()){if(NET.on)sessionEnded();return}NET.meta=s.val();applyNight(!!NET.meta.night);applyHotwash(NET.meta.hotwash);applyViewLock(NET.meta.view)});
   r.child('players').on('value',s=>{NET.players=s.val()||{};renderRoster();if(S.sel)updateInspector();renderSceneList()});
   const me=r.child('players/'+CID);me.set({name:NET.me.name,pos:NET.me.pos,host:NET.host,ts:firebase.database.ServerValue.TIMESTAMP});me.onDisconnect().remove();
@@ -1887,10 +1988,11 @@ function launch(data,opt={}){
   cancelPlacing();select(null);applying=true;try{[...entities.keys()].forEach(id=>removeEntity(id,true))}finally{applying=false}for(const k in counters)delete counters[k];
   envGroup.children.slice().forEach(o=>{envGroup.remove(o)});
   if(data){S.scen=data.scen;S.role=data.role||S.role}
-  S.bld=null;S.view=null;const sc=SCEN[S.scen];sc.inj=buildInj(S.scen);S.fav=buildFav(S.scen);sc.env();$('#floorNav').classList.toggle('show',!!S.bld);document.querySelectorAll('#floorNav button').forEach(x=>x.classList.toggle('on',x.dataset.f==='ext'));
+  S.bld=null;S.view=null;const sc=SCEN[S.scen];sc.inj=buildInj(S.scen);S.fav=buildFav(S.scen);sc.env();
+  {const sh=sun.shadow.camera,r=S.scen==='quake'?135:80;sh.left=-r;sh.right=r;sh.top=r;sh.bottom=-r;sh.updateProjectionMatrix()}$('#floorNav').classList.toggle('show',!!S.bld);document.querySelectorAll('#floorNav button').forEach(x=>x.classList.toggle('on',x.dataset.f==='ext'));
   S.clock={run:false,base:data?data.elapsed||0:0,startAt:0,speed:(data&&data.speed)||1};S.run=false;S.elapsed=S.clock.base;S.log=(!opt.online&&data)?data.log||[]:[];
   const ms0=opt.online?S._msel:(data&&data.msel);S._msel=null;S.msel=(ms0&&ms0.length===sc.inj.length)?ms0:sc.inj.map(()=>'wait');S.speed=(clockObj().speed)||1;$('#speed').value=String(S.speed);renderMsel();
-  $('#mselBtn').style.display=(!NET.on||NET.host)?'':'none';$('#mselPanel').classList.remove('show');
+  $('#mselPanel').classList.remove('show');
   if(data){data.ents.forEach(e=>{const n=addEntity(e.type,e.x,e.z,e.rot,e.name,e.scale||1,true,e.y||0);if(n&&e.prm)setPrm(n,e.prm);if(n&&e.status){n.status=e.status;renderLabel(n)}});camera.position.fromArray(data.cam);controls.target.fromArray(data.tgt)}
   else{const md=(!opt.join&&S.mod&&S.mod.scen===S.scen)?S.mod:null;
     if(!opt.join){if(md)md.ents.forEach(e=>{const n=addEntity(e.type,e.x,e.z,e.rot||0,e.name,e.scale||1,true,e.y||0);if(n&&e.prm)setPrm(n,e.prm)});else sc.init.forEach(([t,x,z,r=0,n=null,s=1,y=0])=>addEntity(t,x,z,r,n,s,true,y));
